@@ -1,0 +1,94 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Supabase
+.supabase/
+
+# Cache
+.cache/
+.parcel-cache/
+.turbo/
+
+# Misc
+*.pem
+*.key
+.docusaurus
+
+# Logs
+logs/
+*.log
+
+# Build outputs
+*.tsbuildinfo
+next-env.d.ts
+
+# Package manager
+.pnpm-store/
+.yarn/
+.npm/
+
+# Large files and media (let AI focus on code)
+*.mp4
+*.mp3
+*.mov
+*.pdf
+*.zip
+*.tar.gz
+
+# Generated files
+generated/
+*.generated.ts
+*.generated.js
+
+# Lock files (AI doesn't need to read these)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Database
+*.db
+*.sqlite
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+

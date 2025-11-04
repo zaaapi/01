@@ -1,0 +1,309 @@
+# Regras do Cursor para Projeto Avocado
+
+## Contexto do Projeto
+Projeto full-stack usando Next.js 14+, TypeScript, Tailwind CSS, Shadcn/ui no frontend e Supabase + N8N no backend.
+
+## Princípios Principais
+
+### Clean Code & SOLID
+- Escreva um código limpo, conciso e fácil de manter, seguindo princípios do SOLID e Clean Code.
+- Use nomes de variáveis descritivos (exemplos: `isLoading`, `hasError`, `userData`).
+- Use kebab-case para nomes de pastas e arquivos (ex: `user-profile.tsx`, `auth-service.ts`).
+- Sempre use TypeScript para escrever código.
+- DRY (Don't Repeat Yourself). Evite duplicidade de código. Quando necessário, crie funções/componentes reutilizáveis.
+
+### Nomenclatura e Organização
+- **Componentes React**: PascalCase (ex: `UserProfile`, `ButtonPrimary`)
+- **Funções/variáveis**: camelCase (ex: `getUserData`, `isAuthenticated`)
+- **Arquivos/pastas**: kebab-case (ex: `user-profile.tsx`, `auth-helpers.ts`)
+- **Constantes**: UPPER_SNAKE_CASE (ex: `API_BASE_URL`, `MAX_RETRY_ATTEMPTS`)
+- **Tipos/Interfaces**: PascalCase com prefixo 'T' ou 'I' quando apropriado (ex: `User`, `IAuthResponse`)
+
+## Stack e Bibliotecas
+
+### Frontend
+- **Framework**: Next.js 14+ (App Router)
+- **Linguagem**: TypeScript (strict mode)
+- **Estilização**: Tailwind CSS (sempre usar para estilos)
+- **Componentes UI**: Shadcn/ui (use ao máximo os componentes disponíveis em https://ui.shadcn.com/)
+- **Formulários**: React Hook Form + Zod para validação
+- **Server Actions**: next-safe-action (use sempre para Server Actions)
+- **Formatação de datas**: dayjs
+- **Máscaras de input**: react-number-format
+
+### Backend
+- **Database & Auth**: Supabase
+- **Automação**: N8N
+- **Deploy**: Vercel (frontend)
+
+## Estrutura de Pastas
+
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── (auth)/            # Rotas de autenticação
+│   ├── (protected)/       # Rotas protegidas
+│   └── api/               # API Routes
+├── components/
+│   ├── ui/                # Componentes Shadcn/ui
+│   └── shared/            # Componentes reutilizáveis
+├── actions/               # Server Actions (next-safe-action)
+├── lib/                   # Utilitários e helpers
+├── hooks/                 # Custom React hooks
+├── types/                 # TypeScript types e interfaces
+├── db/                    # Database client (Supabase)
+└── constants/             # Constantes da aplicação
+```
+
+## Regras Específicas
+
+### React/Next.js
+- **Sempre use Tailwind CSS** para estilização. Evite CSS modules ou styled-components.
+- **Use componentes Shadcn/ui** o máximo possível ao criar/modificar componentes.
+- **Validação de formulários**: sempre use Zod.
+- **Criação de formulários**: sempre use React Hook Form com o componente `form.tsx`.
+- **Componentes específicos de página**: crie na pasta `_components` dentro da pasta da respectiva página.
+- **Server Actions**: 
+  - Sempre use a biblioteca "next-safe-action"
+  - Armazene em `src/actions` com estrutura `src/actions/nome-da-action/index.ts`
+  - Use o hook `useAction` ao chamar Server Actions em componentes
+- **Interação com banco de dados**: sempre use o cliente em `src/db/index.ts`
+- **Manipulação de datas**: use a biblioteca "dayjs"
+- **Layout de páginas**: use o componente `page-container.tsx` para manter padrões de margin, padding e spacing
+- **Máscaras de input**: sempre use "react-number-format"
+
+### TypeScript
+- Use **strict mode** habilitado
+- Defina tipos explícitos para props de componentes
+- Evite `any` - use `unknown` se necessário e faça type checking
+- Use **type inference** quando óbvio, mas seja explícito em interfaces públicas
+- Crie tipos reutilizáveis em `src/types/`
+
+### Componentes
+```typescript
+// ✅ BOM - Componente bem estruturado
+interface UserCardProps {
+  userId: string;
+  userName: string;
+  isActive: boolean;
+  onDelete?: () => void;
+}
+
+export function UserCard({ userId, userName, isActive, onDelete }: UserCardProps) {
+  return (
+    <Card className="p-4">
+      <h3 className="text-lg font-semibold">{userName}</h3>
+      {isActive && <Badge>Ativo</Badge>}
+      {onDelete && (
+        <Button onClick={onDelete} variant="destructive">
+          Deletar
+        </Button>
+      )}
+    </Card>
+  );
+}
+
+// ❌ RUIM - Evite
+export function UserCard(props: any) {
+  return <div style={{padding: '16px'}}>{props.name}</div>;
+}
+```
+
+### Server Actions
+```typescript
+// ✅ BOM - Server Action com next-safe-action
+// src/actions/create-user/index.ts
+"use server";
+
+import { action } from "@/lib/safe-action";
+import { z } from "zod";
+
+const createUserSchema = z.object({
+  name: z.string().min(3),
+  email: z.string().email(),
+});
+
+export const createUser = action(createUserSchema, async ({ name, email }) => {
+  // Lógica de criação
+  return { success: true, userId: "123" };
+});
+
+// Uso no componente
+const { execute, status, result } = useAction(createUser);
+```
+
+### Formulários
+```typescript
+// ✅ BOM - Formulário com React Hook Form + Zod
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+const formSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Mínimo 6 caracteres"),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+export function LoginForm() {
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: FormValues) => {
+    // Lógica de submit
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="seu@email.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Entrar</Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+### Tailwind CSS
+- Use classes utilitárias do Tailwind
+- Evite classes customizadas a menos que absolutamente necessário
+- Use o sistema de design do Shadcn/ui (variantes, tamanhos, etc.)
+- Prefira composition com `cn()` helper para merge de classes
+
+```typescript
+// ✅ BOM
+import { cn } from "@/lib/utils";
+
+<Button className={cn("w-full", isLoading && "opacity-50")} />
+
+// ❌ RUIM
+<Button style={{ width: "100%", opacity: isLoading ? 0.5 : 1 }} />
+```
+
+### Supabase
+- Use o cliente do Supabase configurado em `src/db/index.ts`
+- Sempre trate erros de forma explícita
+- Use tipos gerados do Supabase quando disponível
+
+```typescript
+// ✅ BOM
+import { supabase } from "@/db";
+
+const { data, error } = await supabase
+  .from("users")
+  .select("*")
+  .eq("id", userId)
+  .single();
+
+if (error) {
+  throw new Error(`Erro ao buscar usuário: ${error.message}`);
+}
+```
+
+### Segurança
+- Nunca commite `.env.local` ou arquivos com secrets
+- Use variáveis de ambiente para dados sensíveis
+- Valide todas as entradas do usuário (sempre use Zod)
+- Sanitize dados antes de exibir (especialmente conteúdo HTML)
+
+### Performance
+- Use React Server Components quando possível
+- Implemente lazy loading para componentes pesados
+- Otimize imagens com `next/image`
+- Use `use client` apenas quando necessário (interatividade)
+
+### Acessibilidade
+- Use semantic HTML
+- Adicione labels apropriados em formulários
+- Use atributos ARIA quando necessário
+- Teste navegação por teclado
+
+## Ferramentas de Qualidade
+
+### ESLint
+- Siga as regras configuradas
+- Corrija warnings antes de commitar
+- Use `npm run lint` regularmente
+
+### Prettier
+- Código deve ser auto-formatado
+- Use configurações do projeto
+- Integre com seu editor
+
+### TypeScript
+- Sem erros de type checking
+- Use `npm run type-check` antes de commitar
+
+## Git Workflow
+
+### Commits
+- Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, etc.
+- Mensagens descritivas em português
+- Commits pequenos e focados
+
+```bash
+# ✅ BOM
+git commit -m "feat: adiciona formulário de login com validação"
+git commit -m "fix: corrige erro de autenticação no Supabase"
+
+# ❌ RUIM
+git commit -m "mudanças"
+git commit -m "wip"
+```
+
+### Branches
+- `main` - produção
+- `develop` - desenvolvimento
+- `feature/nome-da-feature` - novas features
+- `fix/nome-do-bug` - correções
+
+## Checklist de Review
+
+Antes de finalizar qualquer feature, verifique:
+
+- [ ] Código segue os princípios SOLID e Clean Code
+- [ ] Nomes de variáveis/funções são descritivos
+- [ ] Arquivos e pastas em kebab-case
+- [ ] TypeScript sem erros
+- [ ] ESLint sem erros/warnings
+- [ ] Componentes usando Shadcn/ui quando aplicável
+- [ ] Formulários com React Hook Form + Zod
+- [ ] Server Actions usando next-safe-action
+- [ ] Estilização 100% com Tailwind CSS
+- [ ] Sem código duplicado (DRY)
+- [ ] Tratamento adequado de erros
+- [ ] Testes básicos funcionando
+- [ ] Sem console.logs esquecidos
+- [ ] Variáveis de ambiente documentadas em .env.example
+
+## Observações
+
+- Sempre priorize qualidade sobre velocidade
+- Documente código complexo com comentários
+- Mantenha componentes pequenos e focados (Single Responsibility)
+- Reutilize código sempre que possível
+- Pense em manutenibilidade futura
+
