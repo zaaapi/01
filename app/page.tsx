@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -25,9 +26,11 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" size="lg">
-              Acessar Plataforma Super Admin
-            </Button>
+            <Link href="/super-admin">
+              <Button className="w-full" size="lg">
+                Acessar Plataforma Super Admin
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
@@ -42,9 +45,11 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" className="w-full" size="lg">
-              Acessar Plataforma Cliente
-            </Button>
+            <Link href="/cliente">
+              <Button variant="secondary" className="w-full" size="lg">
+                Acessar Plataforma Cliente
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
