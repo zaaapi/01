@@ -5,6 +5,7 @@ Projeto full-stack usando Next.js 14+, TypeScript, Tailwind CSS, Shadcn/ui e Sup
 ## Stack Tecnológica
 
 ### Frontend
+
 - **Framework**: Next.js 14+ (App Router)
 - **Linguagem**: TypeScript (strict mode)
 - **Estilização**: Tailwind CSS
@@ -15,6 +16,7 @@ Projeto full-stack usando Next.js 14+, TypeScript, Tailwind CSS, Shadcn/ui e Sup
 - **Máscaras**: react-number-format
 
 ### Backend
+
 - **Database & Auth**: Supabase
 - **Automação**: N8N
 - **Deploy**: Vercel
@@ -64,5 +66,4 @@ Siga os princípios SOLID e Clean Code. Veja `.cursorrules` para regras detalhad
 
 ---
 
-Desenvolvido com 💚 
-
+Desenvolvido com 💚

@@ -79,7 +79,6 @@ generated/
 *.generated.js
 
 # Lock files (AI doesn't need to read these)
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
