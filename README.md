@@ -7,7 +7,9 @@
 LIVIA é uma aplicação web full-stack que oferece duas plataformas distintas:
 
 ### 👨‍💼 Plataforma Super Admin
+
 Gestão completa do sistema com:
+
 - Dashboard executivo com KPIs
 - Gerenciamento de empresas (tenants)
 - Configuração de NeuroCores
@@ -15,7 +17,9 @@ Gestão completa do sistema com:
 - Análise de feedbacks
 
 ### 💼 Plataforma Cliente (Tenant)
+
 Interface para empresas gerenciarem seus atendimentos:
+
 - Dashboard com métricas de conversas
 - Live Chat em tempo real (3 colunas)
 - Base de Conhecimento com Synapses
@@ -26,6 +30,7 @@ Interface para empresas gerenciarem seus atendimentos:
 ## 🚀 Stack Tecnológica
 
 ### Frontend
+
 - **Framework**: Next.js 14+ (App Router)
 - **Linguagem**: TypeScript (strict mode)
 - **Estilização**: Tailwind CSS
@@ -35,15 +40,18 @@ Interface para empresas gerenciarem seus atendimentos:
 - **Tipografia**: Montserrat (Google Fonts)
 
 ### Cores do Design
+
 - **Primary Green**: `#1ab356` (Verde principal)
 - **Secondary Blue**: `#2135df` (Azul secundário)
 
 ### Gerenciamento de Dados
+
 - **Estado**: React Hooks + localStorage
 - **Mock Data**: Sistema de seed com `livia_data_v1`
 - **Tipos**: TypeScript interfaces completas
 
 ### Futuro (Backend)
+
 - **Database & Auth**: Supabase
 - **Automação**: N8N
 - **Formulários**: React Hook Form + Zod
@@ -96,16 +104,20 @@ Projeto-avocado/
 ## 🎨 Design System
 
 ### Tipografia
+
 - **Fonte**: Montserrat (pesos: 300, 400, 500, 600, 700, 800, 900)
 - **Hierarquia**: Estabelecida através de weights variados
 
 ### Temas
+
 - ☀️ **Light Mode**: Cores neutras com acentos vibrantes
 - 🌙 **Dark Mode**: Suporte completo com contraste otimizado
 - 🔄 **Sistema**: Segue preferência do SO
 
 ### Componentes
+
 Todos os componentes UI seguem o padrão Shadcn/ui com personalização para:
+
 - Cores de marca (Primary Green, Secondary Blue)
 - Espaçamento consistente
 - Animações suaves
@@ -114,6 +126,7 @@ Todos os componentes UI seguem o padrão Shadcn/ui com personalização para:
 ## 🏃‍♂️ Como Executar
 
 ### Pré-requisitos
+
 - Node.js 18+
 - npm ou yarn
 
@@ -148,6 +161,7 @@ npm run type-check # Verifica tipos TypeScript
 O sistema utiliza `localStorage` com a chave `livia_data_v1` para persistir dados entre sessões.
 
 ### Dados Incluídos
+
 - 3 Empresas (2 ativas, 1 inativa)
 - 2 NeuroCores (Varejo e Saúde)
 - 3 Agentes IA
@@ -159,11 +173,13 @@ O sistema utiliza `localStorage` com a chave `livia_data_v1` para persistir dado
 - Respostas rápidas
 
 ### Reset de Dados
+
 Acesse o perfil e clique em "Recarregar dados de exemplo" para restaurar o seed inicial.
 
 ## ✅ Funcionalidades Implementadas
 
 ### ✔️ Plataforma Super Admin
+
 - [x] Dashboard com KPIs executivos
 - [x] Gerenciar Empresas (listar, filtrar, ações)
 - [x] Gerenciar NeuroCores (CRUD básico)
@@ -172,6 +188,7 @@ Acesse o perfil e clique em "Recarregar dados de exemplo" para restaurar o seed 
 - [x] Perfil do Super Admin
 
 ### ✔️ Plataforma Cliente
+
 - [x] Dashboard com métricas do tenant
 - [x] Live Chat com 3 colunas (contatos, mensagens, dados)
 - [x] Base de Conhecimento (listagem)
@@ -180,6 +197,7 @@ Acesse o perfil e clique em "Recarregar dados de exemplo" para restaurar o seed 
 - [x] Perfil do Cliente (pessoal + empresa)
 
 ### ✔️ Sistema
+
 - [x] Layout responsivo com sidebar
 - [x] Dark/Light mode com toggle
 - [x] Navegação entre plataformas
@@ -190,6 +208,7 @@ Acesse o perfil e clique em "Recarregar dados de exemplo" para restaurar o seed 
 ## 🔄 Próximos Passos
 
 ### 📌 Melhorias Pendentes
+
 - [ ] Adicionar microinterações (toasts, loading states)
 - [ ] Implementar empty states amigáveis
 - [ ] Adicionar atalhos de teclado
@@ -198,6 +217,7 @@ Acesse o perfil e clique em "Recarregar dados de exemplo" para restaurar o seed 
 - [ ] Adicionar animações de transição
 
 ### 🚧 Funcionalidades Avançadas (Futuro)
+
 - [ ] Modais funcionais (adicionar/editar)
 - [ ] Integração com backend real (Supabase)
 - [ ] Autenticação e autorização
@@ -212,12 +232,14 @@ Acesse o perfil e clique em "Recarregar dados de exemplo" para restaurar o seed 
 ## 📝 Padrões de Código
 
 ### Nomenclatura
+
 - **Arquivos/pastas**: kebab-case (`user-profile.tsx`)
 - **Componentes React**: PascalCase (`UserProfile`)
 - **Funções/variáveis**: camelCase (`getUserData`)
 - **Constantes**: UPPER_SNAKE_CASE (`API_BASE_URL`)
 
 ### Princípios
+
 - ✅ SOLID e Clean Code
 - ✅ DRY (Don't Repeat Yourself)
 - ✅ Componentes pequenos e focados
