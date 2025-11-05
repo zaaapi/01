@@ -135,7 +135,7 @@ export default function NeuroCoresPage() {
     description: string
     niche: string
     apiUrl: string
-    apiSecret: string
+    apiSecret?: string
     isActive?: boolean
     associatedAgents?: string[]
   }) => {
@@ -147,7 +147,7 @@ export default function NeuroCoresPage() {
           description: data.description,
           niche: data.niche,
           apiUrl: data.apiUrl,
-          apiSecret: data.apiSecret,
+          apiSecret: data.apiSecret || addEditModal.neurocore.apiSecret,
           isActive: data.isActive ?? addEditModal.neurocore.isActive,
           associatedAgents: data.associatedAgents ?? addEditModal.neurocore.associatedAgents,
         })
@@ -162,7 +162,7 @@ export default function NeuroCoresPage() {
           description: data.description,
           niche: data.niche,
           apiUrl: data.apiUrl,
-          apiSecret: data.apiSecret,
+          apiSecret: data.apiSecret || "",
           isActive: data.isActive ?? true,
           associatedAgents: data.associatedAgents || [],
         })

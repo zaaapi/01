@@ -273,7 +273,7 @@ export default function FeedbacksPage() {
                         {formatDateTime(feedback.createdAt)}
                       </TableCell>
                       <TableCell>
-                        {feedback.type === FeedbackType.LIKE ? (
+                        {feedback.feedbackType === FeedbackType.LIKE ? (
                           <div className="flex items-center gap-1 text-green-600">
                             <ThumbsUp className="h-4 w-4" />
                             <span className="text-xs">LIKE</span>
@@ -293,14 +293,14 @@ export default function FeedbacksPage() {
                       <TableCell>
                         <Badge
                           variant={
-                            feedback.status === FeedbackStatus.EM_ABERTO
+                            feedback.feedbackStatus === FeedbackStatus.EM_ABERTO
                               ? "destructive"
-                              : feedback.status === FeedbackStatus.SENDO_TRATADO
+                              : feedback.feedbackStatus === FeedbackStatus.SENDO_TRATADO
                               ? "secondary"
                               : "default"
                           }
                         >
-                          {feedback.status}
+                          {feedback.feedbackStatus}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

@@ -19,11 +19,16 @@ import {
   Feedback,
   QuickReplyTemplate,
   GlobalFilters,
+  GlobalFilterPeriod,
+  GlobalFilterConversationSelection,
+  ConversationStatus,
+  FeedbackType,
 } from "@/types"
 import { getLocalData, setLocalData } from "@/lib/local-storage"
 import { seedData } from "@/lib/seed-data"
 import { createSupabaseClient } from "@/db"
 import { FeatureModule } from "@/types"
+import dayjs from "dayjs"
 
 interface DataContextType {
   state: MockAppState
@@ -1293,10 +1298,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
       // Processar palavras-chave
       const wordCounts: Record<string, number> = {}
-      allMessages.forEach((msg) => {
+      allMessages.forEach((msg: any) => {
         if (!msg.content) return
         const words = msg.content.toLowerCase().split(/\s+/)
-        words.forEach((word) => {
+        words.forEach((word: string) => {
           // Limpar palavra de caracteres especiais
           const cleanWord = word.replace(/[^\wáàâãéèêíìîóòôõúùûç]/g, "")
           // Apenas palavras com mais de 3 caracteres
