@@ -23,6 +23,7 @@ import {
   GlobalFilterConversationSelection,
   ConversationStatus,
   FeedbackType,
+  SynapseStatus,
 } from "@/types"
 import { getLocalData, setLocalData } from "@/lib/local-storage"
 import { seedData } from "@/lib/seed-data"
