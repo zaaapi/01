@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { PageContainer } from "@/components/shared/page-container"
 import { PageHeader } from "@/components/shared/page-header"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,7 @@ import { useAuth } from "@/lib/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { useRouter } from "next/navigation"
-import { BaseConhecimento, SynapseStatus } from "@/types"
+import { BaseConhecimento, Synapse } from "@/types"
 import { AddEditBaseConhecimentoModal } from "./_components/add-edit-base-conhecimento-modal"
 import { InativarBaseConhecimentoModal } from "./_components/inativar-base-conhecimento-modal"
 import { ReativarBaseConhecimentoModal } from "./_components/reativar-base-conhecimento-modal"
@@ -31,11 +31,24 @@ import { GerenciarSynapsesModal } from "./_components/gerenciar-synapses-modal"
 
 export default function BaseConhecimentoPage() {
   const router = useRouter()
-  const { state, isLoading, createBaseConhecimento, updateBaseConhecimento } = useData()
+  const { 
+    fetchBaseConhecimentos,
+    fetchSynapsesByBase,
+    createBaseConhecimento, 
+    updateBaseConhecimento,
+    fetchTenantProfile,
+    fetchNeurocores,
+  } = useData()
   const { user } = useAuth()
   const { toast } = useToast()
 
   const tenantId = user?.tenantId
+
+  // Estados para dados do Supabase
+  const [baseConhecimentos, setBaseConhecimentos] = useState<BaseConhecimento[]>([])
+  const [synapsesByBase, setSynapsesByBase] = useState<Record<string, Synapse[]>>({})
+  const [neurocoreName, setNeurocoreName] = useState<string>("N/A")
+  const [isLoadingData, setIsLoadingData] = useState(true)
 
   const [addEditModal, setAddEditModal] = useState<{
     open: boolean
@@ -77,29 +90,73 @@ export default function BaseConhecimentoPage() {
     onNavigate3: () => router.push("/cliente/perfil"),
   })
 
-  // Filtrar bases do tenant logado
-  const tenantBases = useMemo(() => {
-    if (!tenantId) return []
-    return state.baseConhecimentos.filter((b) => b.tenantId === tenantId)
-  }, [state.baseConhecimentos, tenantId])
+  // Carregar dados do Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      if (!tenantId) {
+        setIsLoadingData(false)
+        return
+      }
 
-  // Enriquecer com dados de synapses e neurocore
+      try {
+        setIsLoadingData(true)
+        
+        // Buscar bases de conhecimento
+        const bases = await fetchBaseConhecimentos(tenantId)
+        setBaseConhecimentos(bases)
+
+        // Buscar synapses de cada base
+        const synapsesPromises = bases.map(async (base) => {
+          const synapses = await fetchSynapsesByBase(base.id, tenantId)
+          return { baseId: base.id, synapses }
+        })
+        
+        const synapsesResults = await Promise.all(synapsesPromises)
+        const synapsesMap: Record<string, Synapse[]> = {}
+        synapsesResults.forEach(({ baseId, synapses }) => {
+          synapsesMap[baseId] = synapses
+        })
+        setSynapsesByBase(synapsesMap)
+
+        // Buscar informações do tenant e neurocore
+        const tenant = await fetchTenantProfile(tenantId)
+        if (tenant?.neurocoreId) {
+          const neurocores = await fetchNeurocores()
+          const neurocore = neurocores.find((nc) => nc.id === tenant.neurocoreId)
+          if (neurocore) {
+            setNeurocoreName(neurocore.name)
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    loadData()
+  }, [tenantId, fetchBaseConhecimentos, fetchSynapsesByBase, fetchTenantProfile, fetchNeurocores, toast])
+
+  // Enriquecer com dados de synapses
   const enrichedBases = useMemo(() => {
-    return tenantBases.map((base) => {
-      const synapsesCount = state.synapses.filter((s) => s.baseConhecimentoId === base.id).length
-      const synapsesPublicando = state.synapses.filter(
-        (s) => s.baseConhecimentoId === base.id && s.status === SynapseStatus.PUBLICANDO
-      ).length
-      const neurocore = state.neurocores.find((nc) => nc.id === base.neurocoreId)
+    return baseConhecimentos.map((base) => {
+      const baseSynapses = synapsesByBase[base.id] || []
+      const synapsesCount = baseSynapses.length
+      const synapsesPublicando = baseSynapses.filter((s) => s.status === "PUBLICANDO").length
 
       return {
         ...base,
         synapsesCount,
         synapsesPublicando,
-        neurocoreName: neurocore?.name || "N/A",
+        neurocoreName,
       }
     })
-  }, [tenantBases, state.synapses, state.neurocores])
+  }, [baseConhecimentos, synapsesByBase, neurocoreName])
 
   const handleOpenAddModal = () => {
     setAddEditModal({ open: true, base: null })
@@ -116,8 +173,15 @@ export default function BaseConhecimentoPage() {
     if (!tenantId) return
 
     try {
-      const tenant = state.tenants.find((t) => t.id === tenantId)
-      if (!tenant) return
+      const tenant = await fetchTenantProfile(tenantId)
+      if (!tenant) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível encontrar as informações do tenant.",
+          variant: "destructive",
+        })
+        return
+      }
 
       if (addEditModal.base) {
         // Editar base existente
@@ -144,6 +208,10 @@ export default function BaseConhecimentoPage() {
         })
       }
       setAddEditModal({ open: false, base: null })
+      
+      // Recarregar dados
+      const bases = await fetchBaseConhecimentos(tenantId)
+      setBaseConhecimentos(bases)
     } catch (error) {
       toast({
         title: "Erro",
@@ -158,7 +226,7 @@ export default function BaseConhecimentoPage() {
   }
 
   const handleConfirmInativar = async () => {
-    if (inativarModal.base) {
+    if (inativarModal.base && tenantId) {
       try {
         await updateBaseConhecimento(inativarModal.base.id, { isActive: false })
         toast({
@@ -166,6 +234,10 @@ export default function BaseConhecimentoPage() {
           description: "A base de conhecimento foi inativada com sucesso.",
         })
         setInativarModal({ open: false, base: null })
+        
+        // Recarregar dados
+        const bases = await fetchBaseConhecimentos(tenantId)
+        setBaseConhecimentos(bases)
       } catch (error) {
         toast({
           title: "Erro",
@@ -181,7 +253,7 @@ export default function BaseConhecimentoPage() {
   }
 
   const handleConfirmReativar = async () => {
-    if (reativarModal.base) {
+    if (reativarModal.base && tenantId) {
       try {
         await updateBaseConhecimento(reativarModal.base.id, { isActive: true })
         toast({
@@ -189,6 +261,10 @@ export default function BaseConhecimentoPage() {
           description: "A base de conhecimento foi reativada com sucesso.",
         })
         setReativarModal({ open: false, base: null })
+        
+        // Recarregar dados
+        const bases = await fetchBaseConhecimentos(tenantId)
+        setBaseConhecimentos(bases)
       } catch (error) {
         toast({
           title: "Erro",
@@ -220,7 +296,7 @@ export default function BaseConhecimentoPage() {
     )
   }
 
-  if (isLoading) {
+  if (isLoadingData) {
     return (
       <PageContainer>
         <PageHeader title="Base de Conhecimento" description="Gerencie bases de conhecimento e synapses" />

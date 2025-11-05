@@ -80,12 +80,14 @@ interface DataContextType {
   updateMessage: (id: string, updates: Partial<Message>) => Promise<void>
   deleteMessage: (id: string) => Promise<void>
   
-  // BaseConhecimento
+  // BaseConhecimento - Fetch Functions (Task 11)
+  fetchBaseConhecimentos: (tenantId: string) => Promise<BaseConhecimento[]>
   createBaseConhecimento: (base: Omit<BaseConhecimento, "id" | "createdAt">) => Promise<void>
   updateBaseConhecimento: (id: string, updates: Partial<BaseConhecimento>) => Promise<void>
   deleteBaseConhecimento: (id: string) => Promise<void>
   
-  // Synapses
+  // Synapses - Fetch Functions (Task 11)
+  fetchSynapsesByBase: (baseConhecimentoId: string, tenantId: string) => Promise<Synapse[]>
   createSynapse: (synapse: Omit<Synapse, "id" | "createdAt">) => Promise<void>
   updateSynapse: (id: string, updates: Partial<Synapse>) => Promise<void>
   deleteSynapse: (id: string) => Promise<void>
@@ -772,30 +774,229 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await deleteEntity(id, "messages")
   }, [deleteEntity])
 
-  // BaseConhecimento
+  // BaseConhecimento - Fetch Functions (Task 11)
+  const fetchBaseConhecimentos = useCallback(async (tenantId: string): Promise<BaseConhecimento[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("base_conhecimentos")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar bases de conhecimento:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo BaseConhecimento
+      return data.map((b) => ({
+        id: b.id,
+        tenantId: b.tenant_id,
+        name: b.name,
+        description: b.description || "",
+        neurocoreId: b.neurocore_id,
+        isActive: b.is_active ?? true,
+        createdAt: b.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar bases de conhecimento:", error)
+      return []
+    }
+  }, [])
+
   const createBaseConhecimento = useCallback(async (base: Omit<BaseConhecimento, "id" | "createdAt">) => {
-    await createEntity({ ...base, createdAt: new Date().toISOString() }, "baseConhecimentos")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para inserção no Supabase
+      const insertData = {
+        tenant_id: base.tenantId,
+        name: base.name,
+        description: base.description,
+        neurocore_id: base.neurocoreId,
+        is_active: base.isActive ?? true,
+      }
+
+      const { error } = await supabase.from("base_conhecimentos").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar base de conhecimento: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await createEntity({ ...base, createdAt: new Date().toISOString() }, "baseConhecimentos")
+    } catch (error) {
+      console.error("Erro ao criar base de conhecimento:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateBaseConhecimento = useCallback(async (id: string, updates: Partial<BaseConhecimento>) => {
-    await updateEntity(id, updates, "baseConhecimentos")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.description !== undefined) updateData.description = updates.description
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive
+      if (updates.neurocoreId !== undefined) updateData.neurocore_id = updates.neurocoreId
+
+      const { error } = await supabase
+        .from("base_conhecimentos")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar base de conhecimento: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "baseConhecimentos")
+    } catch (error) {
+      console.error("Erro ao atualizar base de conhecimento:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteBaseConhecimento = useCallback(async (id: string) => {
-    await deleteEntity(id, "baseConhecimentos")
+    try {
+      const supabase = createSupabaseClient()
+      
+      const { error } = await supabase
+        .from("base_conhecimentos")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao excluir base de conhecimento: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await deleteEntity(id, "baseConhecimentos")
+    } catch (error) {
+      console.error("Erro ao excluir base de conhecimento:", error)
+      throw error
+    }
   }, [deleteEntity])
 
-  // Synapses
+  // Synapses - Fetch Functions (Task 11)
+  const fetchSynapsesByBase = useCallback(async (baseConhecimentoId: string, tenantId: string): Promise<Synapse[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("synapses")
+        .select("*")
+        .eq("base_conhecimento_id", baseConhecimentoId)
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar synapses:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo Synapse
+      return data.map((s) => ({
+        id: s.id,
+        baseConhecimentoId: s.base_conhecimento_id,
+        tenantId: s.tenant_id,
+        title: s.title,
+        description: s.description || "",
+        imageUrl: s.image_url || null,
+        status: s.status as SynapseStatus,
+        createdAt: s.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar synapses:", error)
+      return []
+    }
+  }, [])
+
   const createSynapse = useCallback(async (synapse: Omit<Synapse, "id" | "createdAt">) => {
-    await createEntity({ ...synapse, createdAt: new Date().toISOString() }, "synapses")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para inserção no Supabase
+      const insertData = {
+        base_conhecimento_id: synapse.baseConhecimentoId,
+        tenant_id: synapse.tenantId,
+        title: synapse.title,
+        description: synapse.description,
+        image_url: synapse.imageUrl,
+        status: synapse.status,
+      }
+
+      const { error } = await supabase.from("synapses").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar synapse: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await createEntity({ ...synapse, createdAt: new Date().toISOString() }, "synapses")
+    } catch (error) {
+      console.error("Erro ao criar synapse:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateSynapse = useCallback(async (id: string, updates: Partial<Synapse>) => {
-    await updateEntity(id, updates, "synapses")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.title !== undefined) updateData.title = updates.title
+      if (updates.description !== undefined) updateData.description = updates.description
+      if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl
+      if (updates.status !== undefined) updateData.status = updates.status
+
+      const { error } = await supabase
+        .from("synapses")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar synapse: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "synapses")
+    } catch (error) {
+      console.error("Erro ao atualizar synapse:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteSynapse = useCallback(async (id: string) => {
-    await deleteEntity(id, "synapses")
+    try {
+      const supabase = createSupabaseClient()
+      
+      const { error } = await supabase
+        .from("synapses")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao excluir synapse: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await deleteEntity(id, "synapses")
+    } catch (error) {
+      console.error("Erro ao excluir synapse:", error)
+      throw error
+    }
   }, [deleteEntity])
 
   // Feedbacks - Fetch Functions (Task 9)
@@ -1436,9 +1637,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createMessage,
     updateMessage,
     deleteMessage,
+    fetchBaseConhecimentos,
     createBaseConhecimento,
     updateBaseConhecimento,
     deleteBaseConhecimento,
+    fetchSynapsesByBase,
     createSynapse,
     updateSynapse,
     deleteSynapse,

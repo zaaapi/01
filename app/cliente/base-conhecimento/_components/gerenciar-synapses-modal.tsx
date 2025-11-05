@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Plus, Pencil, Trash2, Check } from "lucide-react"
 import { useData } from "@/lib/contexts/data-provider"
 import { useToast } from "@/hooks/use-toast"
 import { BaseConhecimento, Synapse, SynapseStatus } from "@/types"
@@ -40,8 +41,11 @@ export function GerenciarSynapsesModal({
   onOpenChange,
   base,
 }: GerenciarSynapsesModalProps) {
-  const { state, createSynapse, updateSynapse, deleteSynapse } = useData()
+  const { fetchSynapsesByBase, createSynapse, updateSynapse, deleteSynapse } = useData()
   const { toast } = useToast()
+  
+  const [baseSynapses, setBaseSynapses] = useState<Synapse[]>([])
+  const [isLoadingSynapses, setIsLoadingSynapses] = useState(false)
 
   const [addEditModal, setAddEditModal] = useState<{
     open: boolean
@@ -67,12 +71,29 @@ export function GerenciarSynapsesModal({
     synapse: null,
   })
 
-  const baseSynapses = useMemo(() => {
-    if (!base) return []
-    return state.synapses
-      .filter((s) => s.baseConhecimentoId === base.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [state.synapses, base])
+  // Carregar synapses quando o modal abre ou a base muda
+  useEffect(() => {
+    const loadSynapses = async () => {
+      if (!base || !open) return
+
+      try {
+        setIsLoadingSynapses(true)
+        const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
+        setBaseSynapses(synapses)
+      } catch (error) {
+        console.error("Erro ao carregar synapses:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as synapses.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingSynapses(false)
+      }
+    }
+
+    loadSynapses()
+  }, [base, open, fetchSynapsesByBase, toast])
 
   const handleSaveSynapse = async (data: {
     title: string
@@ -107,6 +128,10 @@ export function GerenciarSynapsesModal({
         })
       }
       setAddEditModal({ open: false, synapse: null })
+      
+      // Recarregar synapses
+      const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
+      setBaseSynapses(synapses)
     } catch (error) {
       toast({
         title: "Erro",
@@ -121,7 +146,7 @@ export function GerenciarSynapsesModal({
   }
 
   const handleConfirmPublicar = async () => {
-    if (publicarModal.synapse) {
+    if (publicarModal.synapse && base) {
       try {
         await updateSynapse(publicarModal.synapse.id, {
           status: SynapseStatus.PUBLICANDO,
@@ -131,6 +156,10 @@ export function GerenciarSynapsesModal({
           description: "A synapse está sendo publicada.",
         })
         setPublicarModal({ open: false, synapse: null })
+        
+        // Recarregar synapses
+        const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
+        setBaseSynapses(synapses)
       } catch (error) {
         toast({
           title: "Erro",
@@ -146,7 +175,7 @@ export function GerenciarSynapsesModal({
   }
 
   const handleConfirmDelete = async () => {
-    if (deleteModal.synapse) {
+    if (deleteModal.synapse && base) {
       try {
         await deleteSynapse(deleteModal.synapse.id)
         toast({
@@ -154,6 +183,10 @@ export function GerenciarSynapsesModal({
           description: "A synapse foi excluída com sucesso.",
         })
         setDeleteModal({ open: false, synapse: null })
+        
+        // Recarregar synapses
+        const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
+        setBaseSynapses(synapses)
       } catch (error) {
         toast({
           title: "Erro",
@@ -190,7 +223,13 @@ export function GerenciarSynapsesModal({
             </div>
 
             <ScrollArea className="h-[500px] rounded-md border">
-              {baseSynapses.length === 0 ? (
+              {isLoadingSynapses ? (
+                <div className="p-4 space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : baseSynapses.length === 0 ? (
                 <div className="flex items-center justify-center h-full p-8">
                   <EmptyState
                     icon={Sparkles}
