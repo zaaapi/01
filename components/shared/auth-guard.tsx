@@ -48,13 +48,9 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     }
   }, [user, isLoadingAuth, allowedRoles, router, pathname])
 
-  // Mostrar loading enquanto verifica autenticação (com timeout de segurança)
+  // Se ainda está carregando, não renderizar nada (evitar flash de loading)
   if (isLoadingAuth) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-muted-foreground">Carregando...</div>
-      </div>
-    )
+    return null
   }
 
   // Se não está logado, não renderizar children (o redirecionamento já foi feito no useEffect)

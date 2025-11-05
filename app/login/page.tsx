@@ -26,7 +26,7 @@ export default function LoginPage() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Redirecionar se já estiver logado
+  // Redirecionar se já estiver logado (sem mostrar loading)
   useEffect(() => {
     if (!isLoadingAuth && user) {
       if (user.role === "super_admin") {
@@ -49,11 +49,7 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true)
       await signIn(data.email, data.password)
-      toast({
-        title: "Login realizado com sucesso",
-        description: "Redirecionando...",
-      })
-      // O redirecionamento será feito automaticamente pelo AuthContext
+      // O redirecionamento será feito automaticamente pelo AuthContext sem mostrar loading
     } catch (error) {
       toast({
         title: "Erro ao fazer login",
@@ -65,13 +61,9 @@ export default function LoginPage() {
     }
   }
 
-  // Mostrar loading enquanto verifica autenticação ou se já está logado
-  if (isLoadingAuth || user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="text-muted-foreground">Redirecionando...</div>
-      </div>
-    )
+  // Se já está logado, não renderizar nada (o useEffect vai redirecionar)
+  if (user) {
+    return null
   }
 
   return (

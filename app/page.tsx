@@ -22,22 +22,9 @@ export default function Home() {
     }
   }, [user, isLoadingAuth, router])
 
-  // Mostrar loading enquanto verifica autenticação
-  if (isLoadingAuth) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <div className="text-muted-foreground">Carregando...</div>
-      </main>
-    )
-  }
-
-  // Se está logado, o useEffect vai redirecionar, mas enquanto isso mostra loading
-  if (user) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <div className="text-muted-foreground">Redirecionando...</div>
-      </main>
-    )
+  // Se está carregando ou já logado, não renderizar nada (evitar flash de conteúdo)
+  if (isLoadingAuth || user) {
+    return null
   }
 
   // Página inicial para usuários não logados
