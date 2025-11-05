@@ -12,6 +12,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, fullName: string) => Promise<void>
   signOut: () => Promise<void>
+  refreshUser: () => Promise<void> // Atualizar perfil do usuário após alterações
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -314,6 +315,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase])
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const userProfile = await fetchUserProfile(session.user.id)
+        if (userProfile) {
+          setUser(userProfile)
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar perfil do usuário:", error)
+    }
+  }, [supabase, fetchUserProfile])
+
   return (
     <AuthContext.Provider
       value={{
@@ -322,6 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        refreshUser,
       }}
     >
       {children}

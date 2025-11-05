@@ -35,6 +35,12 @@ interface DataContextType {
   updateUser: (id: string, updates: Partial<User>) => Promise<void>
   deleteUser: (id: string) => Promise<void>
   
+  // Supabase Profile Functions (Task 5)
+  fetchUserProfile: (userId: string) => Promise<User | null>
+  fetchTenantProfile: (tenantId: string) => Promise<Tenant | null>
+  updateUserProfile: (userId: string, data: Partial<User>) => Promise<void>
+  updateTenantProfile: (tenantId: string, data: Partial<Tenant>) => Promise<void>
+  
   // NeuroCores
   createNeuroCore: (neurocore: Omit<NeuroCore, "id" | "createdAt">) => Promise<void>
   updateNeuroCore: (id: string, updates: Partial<NeuroCore>) => Promise<void>
@@ -388,6 +394,146 @@ export function DataProvider({ children }: { children: ReactNode }) {
     persistState(seedData)
   }, [persistState])
 
+  // Supabase Profile Functions (Task 5)
+  const fetchUserProfile = useCallback(async (userId: string): Promise<User | null> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single()
+
+      if (error) {
+        console.error("Erro ao buscar perfil do usuário:", error)
+        return null
+      }
+
+      if (!data) {
+        return null
+      }
+
+      // Mapear dados do Supabase para o tipo User
+      return {
+        id: data.id,
+        tenantId: data.tenant_id || null,
+        fullName: data.full_name || data.email,
+        email: data.email,
+        whatsappNumber: data.whatsapp_number || "",
+        role: data.role as User["role"],
+        avatarUrl: data.avatar_url || "",
+        modules: (data.modules || []) as User["modules"],
+        isActive: data.is_active ?? true,
+        lastSignInAt: data.last_sign_in_at || null,
+        createdAt: data.created_at || new Date().toISOString(),
+      }
+    } catch (error) {
+      console.error("Exceção ao buscar perfil do usuário:", error)
+      return null
+    }
+  }, [])
+
+  const fetchTenantProfile = useCallback(async (tenantId: string): Promise<Tenant | null> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("*")
+        .eq("id", tenantId)
+        .single()
+
+      if (error) {
+        console.error("Erro ao buscar perfil do tenant:", error)
+        return null
+      }
+
+      if (!data) {
+        return null
+      }
+
+      // Mapear dados do Supabase para o tipo Tenant
+      return {
+        id: data.id,
+        name: data.name,
+        neurocoreId: data.neurocore_id,
+        isActive: data.is_active ?? true,
+        cnpj: data.cnpj || "",
+        phone: data.phone || "",
+        responsibleTech: data.responsible_tech || {
+          name: "",
+          whatsapp: "",
+          email: "",
+        },
+        responsibleFinance: data.responsible_finance || {
+          name: "",
+          whatsapp: "",
+          email: "",
+        },
+        plan: data.plan || "Basic",
+        createdAt: data.created_at || new Date().toISOString(),
+      }
+    } catch (error) {
+      console.error("Exceção ao buscar perfil do tenant:", error)
+      return null
+    }
+  }, [])
+
+  const updateUserProfile = useCallback(async (userId: string, data: Partial<User>): Promise<void> => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (data.fullName !== undefined) updateData.full_name = data.fullName
+      if (data.whatsappNumber !== undefined) updateData.whatsapp_number = data.whatsappNumber
+      if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl
+
+      const { error } = await supabase
+        .from("users")
+        .update(updateData)
+        .eq("id", userId)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar perfil do usuário: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateUser(userId, data)
+    } catch (error) {
+      console.error("Erro ao atualizar perfil do usuário:", error)
+      throw error
+    }
+  }, [updateUser])
+
+  const updateTenantProfile = useCallback(async (tenantId: string, data: Partial<Tenant>): Promise<void> => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (data.name !== undefined) updateData.name = data.name
+      if (data.cnpj !== undefined) updateData.cnpj = data.cnpj
+      if (data.phone !== undefined) updateData.phone = data.phone
+      if (data.responsibleTech !== undefined) updateData.responsible_tech = data.responsibleTech
+      if (data.responsibleFinance !== undefined) updateData.responsible_finance = data.responsibleFinance
+
+      const { error } = await supabase
+        .from("tenants")
+        .update(updateData)
+        .eq("id", tenantId)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar perfil do tenant: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateTenant(tenantId, data)
+    } catch (error) {
+      console.error("Erro ao atualizar perfil do tenant:", error)
+      throw error
+    }
+  }, [updateTenant])
+
   const value: DataContextType = {
     state,
     isLoading,
@@ -426,6 +572,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     deleteQuickReplyTemplate,
     updateGlobalFilters,
     resetData,
+    fetchUserProfile,
+    fetchTenantProfile,
+    updateUserProfile,
+    updateTenantProfile,
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

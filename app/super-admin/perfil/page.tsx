@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Form,
   FormControl,
@@ -36,9 +37,11 @@ type FormValues = z.infer<typeof perfilSchema>
 
 export default function PerfilSuperAdminPage() {
   const router = useRouter()
-  const { user, signOut } = useAuth()
-  const { resetData } = useData()
+  const { user, signOut, refreshUser } = useAuth()
+  const { resetData, fetchUserProfile, updateUserProfile } = useData()
   const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(perfilSchema),
@@ -48,14 +51,38 @@ export default function PerfilSuperAdminPage() {
     },
   })
 
+  // Carregar dados do Supabase
   useEffect(() => {
-    if (user) {
-      form.reset({
-        name: user.fullName,
-        email: user.email,
-      })
+    const loadProfile = async () => {
+      if (!user?.id) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        setIsLoading(true)
+        const userProfile = await fetchUserProfile(user.id)
+        
+        if (userProfile) {
+          form.reset({
+            name: userProfile.fullName,
+            email: userProfile.email,
+          })
+        }
+      } catch (error) {
+        console.error("Erro ao carregar perfil:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar o perfil.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [user, form])
+
+    loadProfile()
+  }, [user?.id, fetchUserProfile, form, toast])
 
   // Atalhos de teclado
   useKeyboardShortcuts({
@@ -65,11 +92,31 @@ export default function PerfilSuperAdminPage() {
   })
 
   const handleSave = async (data: FormValues) => {
-    // Em produção, isso atualizaria o usuário no banco
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram salvas com sucesso.",
-    })
+    if (!user?.id) return
+
+    try {
+      setIsSaving(true)
+      await updateUserProfile(user.id, {
+        fullName: data.name,
+      })
+
+      // Atualizar AuthContext
+      await refreshUser()
+
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram salvas com sucesso.",
+      })
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error)
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Não foi possível atualizar o perfil.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleRecarregarDados = () => {
@@ -86,6 +133,30 @@ export default function PerfilSuperAdminPage() {
 
   if (!user) {
     return null
+  }
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Meu Perfil"
+          description="Gerencie suas informações pessoais e preferências"
+        />
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-32" />
+            </CardContent>
+          </Card>
+        </div>
+      </PageContainer>
+    )
   }
 
   return (
@@ -108,9 +179,9 @@ export default function PerfilSuperAdminPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome</FormLabel>
+                      <FormLabel>Nome Fictício</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} disabled={isSaving} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -122,7 +193,7 @@ export default function PerfilSuperAdminPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>E-mail</FormLabel>
+                      <FormLabel>E-mail Fictício</FormLabel>
                       <FormControl>
                         <Input type="email" {...field} disabled />
                       </FormControl>
@@ -136,7 +207,9 @@ export default function PerfilSuperAdminPage() {
                   <Input value="Português (pt-BR)" disabled />
                 </div>
 
-                <Button type="submit">Salvar Alterações</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Salvando..." : "Salvar Informações Pessoais"}
+                </Button>
               </form>
             </Form>
           </CardContent>
