@@ -54,6 +54,7 @@ import { CustomerDataPanel } from "./_components/customer-data-panel"
 import { QuickRepliesSheet } from "./_components/quick-replies-sheet"
 import { MessageFeedbackPopover } from "./_components/message-feedback-popover"
 import { ConversationFeedbackModal } from "./_components/conversation-feedback-modal"
+import { n8nClient } from "@/lib/n8n-client"
 
 export default function LiveChatPage() {
   const { 
@@ -234,16 +235,15 @@ export default function LiveChatPage() {
   }, [messages])
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversationId || !user) return
+    if (!messageInput.trim() || !selectedConversationId || !user || !tenantId || !selectedContactId) return
 
     try {
-      await createMessage({
+      // Enviar via N8N (que processará e enviará pelo WhatsApp)
+      await n8nClient.sendWhatsAppMessage({
+        tenantId: tenantId,
+        contactId: selectedContactId,
         conversationId: selectedConversationId,
-        senderType: MessageSenderType.ATENDENTE,
-        senderId: user.id,
-        content: messageInput.trim(),
-        timestamp: new Date().toISOString(),
-        feedback: null,
+        message: messageInput.trim(),
       })
 
       // Atualizar lastMessageAt da conversa
@@ -253,19 +253,20 @@ export default function LiveChatPage() {
         })
       }
 
-      // Reload messages to show new message
+      // Reload messages to show new message (N8N salvará a mensagem no Supabase)
       const updatedMessages = await fetchMessagesByConversation(selectedConversationId)
       setMessages(updatedMessages)
 
       setMessageInput("")
       toast({
         title: "Mensagem enviada",
-        description: "Sua mensagem foi enviada com sucesso.",
+        description: "Sua mensagem foi enviada com sucesso via WhatsApp.",
       })
     } catch (error) {
+      console.error("Erro ao enviar mensagem:", error)
       toast({
         title: "Erro",
-        description: "Não foi possível enviar a mensagem.",
+        description: "Não foi possível enviar a mensagem. Verifique a conexão com N8N.",
         variant: "destructive",
       })
     }
@@ -287,30 +288,93 @@ export default function LiveChatPage() {
   }
 
   const handlePauseResumeIA = async () => {
-    if (!selectedConversationId || !selectedConversation) return
+    if (!selectedConversationId || !selectedConversation || !tenantId) return
 
     try {
-      const newIaActive = !selectedConversation.iaActive
+      const isPausing = selectedConversation.iaActive
+
+      // Chamar N8N para pausar/retomar IA
+      if (isPausing) {
+        await n8nClient.pauseIAConversation({
+          tenantId: tenantId,
+          conversationId: selectedConversationId,
+        })
+      } else {
+        await n8nClient.resumeIAConversation({
+          tenantId: tenantId,
+          conversationId: selectedConversationId,
+        })
+      }
+
+      // Atualizar no Supabase
       await updateConversation(selectedConversationId, {
-        iaActive: newIaActive,
+        iaActive: !isPausing,
       })
       
       // Update local state
       setSelectedConversation({
         ...selectedConversation,
-        iaActive: newIaActive,
+        iaActive: !isPausing,
       })
       
       toast({
-        title: selectedConversation.iaActive ? "IA pausada" : "IA retomada",
-        description: selectedConversation.iaActive
+        title: isPausing ? "IA pausada" : "IA retomada",
+        description: isPausing
           ? "A IA foi pausada para esta conversa."
           : "A IA foi retomada para esta conversa.",
       })
     } catch (error) {
+      console.error("Erro ao alterar estado da IA:", error)
       toast({
         title: "Erro",
-        description: "Não foi possível alterar o estado da IA.",
+        description: "Não foi possível alterar o estado da IA. Verifique a conexão com N8N.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleEndConversation = async () => {
+    if (!selectedConversationId || !selectedConversation || !tenantId || !selectedContactId) return
+
+    // Confirmação
+    if (!confirm("Tem certeza que deseja encerrar esta conversa?")) return
+
+    try {
+      // Chamar N8N para encerrar conversa
+      await n8nClient.endConversation({
+        tenantId: tenantId,
+        conversationId: selectedConversationId,
+        contactId: selectedContactId,
+      })
+
+      // Atualizar no Supabase
+      await updateConversation(selectedConversationId, {
+        status: ConversationStatus.ENCERRADA,
+      })
+      
+      // Update local state
+      setSelectedConversation({
+        ...selectedConversation,
+        status: ConversationStatus.ENCERRADA,
+      })
+      
+      // Reload conversations
+      const updatedConversations = await fetchConversationsByContact(
+        selectedContactId, 
+        tenantId, 
+        statusFilter !== "all" ? { status: statusFilter } : undefined
+      )
+      setConversations(updatedConversations)
+      
+      toast({
+        title: "Conversa encerrada",
+        description: "A conversa foi encerrada com sucesso.",
+      })
+    } catch (error) {
+      console.error("Erro ao encerrar conversa:", error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível encerrar a conversa.",
         variant: "destructive",
       })
     }
@@ -520,6 +584,7 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
                   variant={selectedConversation.iaActive ? "secondary" : "default"}
                   size="sm"
                   onClick={handlePauseResumeIA}
+                  disabled={selectedConversation.status === ConversationStatus.ENCERRADA}
                 >
                   {selectedConversation.iaActive ? (
                     <>
@@ -539,6 +604,14 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
                   onClick={() => setShowConversationFeedback(true)}
                 >
                   Feedback
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleEndConversation}
+                  disabled={selectedConversation.status === ConversationStatus.ENCERRADA}
+                >
+                  Encerrar
                 </Button>
               </div>
             </div>

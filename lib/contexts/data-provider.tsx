@@ -14,6 +14,7 @@ import {
   Contact,
   Conversation,
   Message,
+  MessageFeedback,
   BaseConhecimento,
   Synapse,
   Feedback,
@@ -1163,7 +1164,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       // Update local state for synchronization
-      await updateEntity(id, { feedback: feedbackData as MessageFeedback }, "messages")
+      await updateEntity<Message>(id, { feedback: feedbackData as MessageFeedback }, "messages")
     } catch (error) {
       console.error("Erro ao atualizar feedback da mensagem:", error)
       throw error
@@ -1674,7 +1675,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Update local state
       const quickReply = state.quickReplyTemplates.find(qr => qr.id === id)
       if (quickReply) {
-        await updateEntity(id, { usageCount: (quickReply.usageCount || 0) + 1 }, "quickReplyTemplates")
+        await updateEntity<QuickReplyTemplate>(id, { usageCount: (quickReply.usageCount || 0) + 1 }, "quickReplyTemplates")
       }
     } catch (error) {
       console.error("Erro ao incrementar uso de resposta rápida:", error)
