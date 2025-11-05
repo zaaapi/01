@@ -56,7 +56,17 @@ import { MessageFeedbackPopover } from "./_components/message-feedback-popover"
 import { ConversationFeedbackModal } from "./_components/conversation-feedback-modal"
 
 export default function LiveChatPage() {
-  const { state, isLoading, updateConversation, createMessage, updateContact } = useData()
+  const { 
+    fetchContacts,
+    fetchContact,
+    fetchConversationsByContact,
+    fetchMessagesByConversation,
+    fetchQuickReplyTemplates,
+    updateConversation, 
+    createMessage, 
+    updateContact,
+    incrementQuickReplyUsage,
+  } = useData()
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -71,94 +81,157 @@ export default function LiveChatPage() {
   const [showConversationFeedback, setShowConversationFeedback] = useState(false)
   const messageEndRef = useRef<HTMLDivElement>(null)
 
-  // Filtrar contatos e conversas do tenant logado
-  const tenantContacts = useMemo(() => {
-    if (!tenantId) return []
-    return state.contacts.filter((c) => c.tenantId === tenantId)
-  }, [state.contacts, tenantId])
+  // State for data loaded from Supabase
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [quickReplies, setQuickReplies] = useState<QuickReplyTemplate[]>([])
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false)
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  const [isLoadingQuickReplies, setIsLoadingQuickReplies] = useState(false)
 
-  const tenantConversations = useMemo(() => {
-    if (!tenantId) return []
-    return state.conversations.filter((c) => c.tenantId === tenantId)
-  }, [state.conversations, tenantId])
-
-  // Filtrar contatos por busca
-  const filteredContacts = useMemo(() => {
-    let contacts = tenantContacts
-
-    if (searchQuery) {
-      contacts = contacts.filter((c) => {
-        const fieldValue = c[searchField]?.toLowerCase() || ""
-        return fieldValue.includes(searchQuery.toLowerCase())
-      })
-    }
-
-    return contacts.sort((a, b) => {
-      const dateA = new Date(a.lastInteraction).getTime()
-      const dateB = new Date(b.lastInteraction).getTime()
-      return dateB - dateA
-    })
-  }, [tenantContacts, searchQuery, searchField])
-
-  // Filtrar conversas por status
-  const filteredConversations = useMemo(() => {
-    if (!selectedContactId) return []
-
-    let conversations = tenantConversations.filter(
-      (c) => c.contactId === selectedContactId
-    )
-
-    if (statusFilter !== "all") {
-      conversations = conversations.filter((c) => c.status === statusFilter)
-    }
-
-    return conversations.sort((a, b) => {
-      const dateA = new Date(a.lastMessageAt).getTime()
-      const dateB = new Date(b.lastMessageAt).getTime()
-      return dateB - dateA
-    })
-  }, [tenantConversations, selectedContactId, statusFilter])
-
-  // Selecionar primeira conversa automaticamente
+  // Load contacts on mount and when filters change
   useEffect(() => {
-    if (selectedContactId && filteredConversations.length > 0 && !selectedConversationId) {
-      setSelectedConversationId(filteredConversations[0].id)
+    if (!tenantId) return
+
+    const loadContacts = async () => {
+      setIsLoadingContacts(true)
+      try {
+        const filters = {
+          search: searchQuery || undefined,
+          searchField: searchField,
+        }
+        const data = await fetchContacts(tenantId, filters)
+        setContacts(data)
+      } catch (error) {
+        console.error("Erro ao carregar contatos:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os contatos.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingContacts(false)
+      }
     }
-  }, [selectedContactId, filteredConversations, selectedConversationId])
 
-  // Buscar mensagens da conversa selecionada
-  const conversationMessages = useMemo(() => {
-    if (!selectedConversationId) return []
-    return state.messages
-      .filter((m) => m.conversationId === selectedConversationId)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-  }, [state.messages, selectedConversationId])
+    loadContacts()
+  }, [tenantId, searchQuery, searchField, fetchContacts, toast])
 
-  // Buscar contato selecionado
-  const selectedContact = useMemo(() => {
-    if (!selectedContactId) return null
-    return tenantContacts.find((c) => c.id === selectedContactId)
-  }, [tenantContacts, selectedContactId])
+  // Load conversations when contact is selected
+  useEffect(() => {
+    if (!selectedContactId || !tenantId) {
+      setConversations([])
+      return
+    }
 
-  // Buscar conversa selecionada
-  const selectedConversation = useMemo(() => {
-    if (!selectedConversationId) return null
-    return tenantConversations.find((c) => c.id === selectedConversationId)
-  }, [tenantConversations, selectedConversationId])
+    const loadConversations = async () => {
+      setIsLoadingConversations(true)
+      try {
+        const filters = statusFilter !== "all" ? { status: statusFilter } : undefined
+        const data = await fetchConversationsByContact(selectedContactId, tenantId, filters)
+        setConversations(data)
+        
+        // Auto-select first conversation
+        if (data.length > 0 && !selectedConversationId) {
+          setSelectedConversationId(data[0].id)
+          setSelectedConversation(data[0])
+        }
+      } catch (error) {
+        console.error("Erro ao carregar conversas:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as conversas.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingConversations(false)
+      }
+    }
+
+    loadConversations()
+  }, [selectedContactId, tenantId, statusFilter, fetchConversationsByContact, selectedConversationId, toast])
+
+  // Load selected contact details
+  useEffect(() => {
+    if (!selectedContactId) {
+      setSelectedContact(null)
+      return
+    }
+
+    const loadContact = async () => {
+      try {
+        const data = await fetchContact(selectedContactId)
+        setSelectedContact(data)
+      } catch (error) {
+        console.error("Erro ao carregar contato:", error)
+      }
+    }
+
+    loadContact()
+  }, [selectedContactId, fetchContact])
+
+  // Load messages when conversation is selected
+  useEffect(() => {
+    if (!selectedConversationId) {
+      setMessages([])
+      return
+    }
+
+    const loadMessages = async () => {
+      setIsLoadingMessages(true)
+      try {
+        const data = await fetchMessagesByConversation(selectedConversationId)
+        setMessages(data)
+      } catch (error) {
+        console.error("Erro ao carregar mensagens:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as mensagens.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingMessages(false)
+      }
+    }
+
+    loadMessages()
+  }, [selectedConversationId, fetchMessagesByConversation, toast])
+
+  // Update selected conversation when it changes in the list
+  useEffect(() => {
+    if (selectedConversationId) {
+      const conv = conversations.find(c => c.id === selectedConversationId)
+      setSelectedConversation(conv || null)
+    }
+  }, [selectedConversationId, conversations])
+
+  // Load top quick replies
+  useEffect(() => {
+    if (!tenantId) return
+
+    const loadQuickReplies = async () => {
+      setIsLoadingQuickReplies(true)
+      try {
+        const data = await fetchQuickReplyTemplates(tenantId, true)
+        setQuickReplies(data.slice(0, 10))
+      } catch (error) {
+        console.error("Erro ao carregar respostas rápidas:", error)
+      } finally {
+        setIsLoadingQuickReplies(false)
+      }
+    }
+
+    loadQuickReplies()
+  }, [tenantId, fetchQuickReplyTemplates])
 
   // Scroll para última mensagem
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [conversationMessages])
-
-  // Buscar 10 respostas rápidas mais usadas
-  const topQuickReplies = useMemo(() => {
-    if (!tenantId) return []
-    return state.quickReplyTemplates
-      .filter((q) => q.tenantId === tenantId)
-      .sort((a, b) => b.usageCount - a.usageCount)
-      .slice(0, 10)
-  }, [state.quickReplyTemplates, tenantId])
+  }, [messages])
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedConversationId || !user) return
@@ -180,6 +253,10 @@ export default function LiveChatPage() {
         })
       }
 
+      // Reload messages to show new message
+      const updatedMessages = await fetchMessagesByConversation(selectedConversationId)
+      setMessages(updatedMessages)
+
       setMessageInput("")
       toast({
         title: "Mensagem enviada",
@@ -194,23 +271,36 @@ export default function LiveChatPage() {
     }
   }
 
-  const handleQuickReplyClick = (quickReply: QuickReplyTemplate) => {
+  const handleQuickReplyClick = async (quickReply: QuickReplyTemplate) => {
     setMessageInput(quickReply.message)
     setShowQuickReplies(false)
-    // Incrementar uso (simulado)
-    toast({
-      title: "Resposta rápida inserida",
-      description: "Adicione a lógica para incrementar usageCount",
-    })
+    
+    // Incrementar uso
+    try {
+      await incrementQuickReplyUsage(quickReply.id)
+      // Reload quick replies to update counts
+      const updatedQuickReplies = await fetchQuickReplyTemplates(tenantId!, true)
+      setQuickReplies(updatedQuickReplies.slice(0, 10))
+    } catch (error) {
+      console.error("Erro ao incrementar uso da resposta rápida:", error)
+    }
   }
 
   const handlePauseResumeIA = async () => {
     if (!selectedConversationId || !selectedConversation) return
 
     try {
+      const newIaActive = !selectedConversation.iaActive
       await updateConversation(selectedConversationId, {
-        iaActive: !selectedConversation.iaActive,
+        iaActive: newIaActive,
       })
+      
+      // Update local state
+      setSelectedConversation({
+        ...selectedConversation,
+        iaActive: newIaActive,
+      })
+      
       toast({
         title: selectedConversation.iaActive ? "IA pausada" : "IA retomada",
         description: selectedConversation.iaActive
@@ -345,11 +435,17 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
         </div>
 
         <ScrollArea className="flex-1">
-          <ContactList
-            contacts={filteredContacts}
-            selectedContactId={selectedContactId}
-            onSelectContact={setSelectedContactId}
-          />
+          {isLoadingContacts ? (
+            <div className="flex items-center justify-center h-full p-4">
+              <p className="text-sm text-muted-foreground">Carregando contatos...</p>
+            </div>
+          ) : (
+            <ContactList
+              contacts={contacts}
+              selectedContactId={selectedContactId}
+              onSelectContact={setSelectedContactId}
+            />
+          )}
         </ScrollArea>
       </div>
 
@@ -380,12 +476,18 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
             </div>
 
             <ScrollArea className="flex-1">
-              <ConversationList
-                conversations={filteredConversations}
-                selectedConversationId={selectedConversationId}
-                onSelectConversation={setSelectedConversationId}
-                contacts={tenantContacts}
-              />
+              {isLoadingConversations ? (
+                <div className="flex items-center justify-center h-full p-4">
+                  <p className="text-sm text-muted-foreground">Carregando conversas...</p>
+                </div>
+              ) : (
+                <ConversationList
+                  conversations={conversations}
+                  selectedConversationId={selectedConversationId}
+                  onSelectConversation={setSelectedConversationId}
+                  contacts={contacts}
+                />
+              )}
             </ScrollArea>
           </>
         ) : (
@@ -444,22 +546,30 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
             {/* Mensagens */}
             <ScrollArea className="flex-1">
               <div className="p-4">
-                <MessageList
-                  messages={conversationMessages}
-                  selectedConversation={selectedConversation}
-                  tenantId={tenantId}
-                  currentUserId={user?.id || null}
-                />
-                <div ref={messageEndRef} />
+                {isLoadingMessages ? (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-sm text-muted-foreground">Carregando mensagens...</p>
+                  </div>
+                ) : (
+                  <>
+                    <MessageList
+                      messages={messages}
+                      selectedConversation={selectedConversation!}
+                      tenantId={tenantId!}
+                      currentUserId={user?.id || null}
+                    />
+                    <div ref={messageEndRef} />
+                  </>
+                )}
               </div>
             </ScrollArea>
 
             {/* Input com Respostas Rápidas */}
             <div className="p-4 border-t space-y-2">
               {/* Botão de Respostas Rápidas */}
-              {topQuickReplies.length > 0 && (
+              {!isLoadingQuickReplies && quickReplies.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {topQuickReplies.slice(0, 5).map((qr) => (
+                  {quickReplies.slice(0, 5).map((qr) => (
                     <Button
                       key={qr.id}
                       variant="outline"
@@ -515,6 +625,9 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
               if (selectedContactId) {
                 try {
                   await updateContact(selectedContactId, data)
+                  // Reload contact to show updated data
+                  const updatedContact = await fetchContact(selectedContactId)
+                  setSelectedContact(updatedContact)
                   toast({
                     title: "Dados atualizados",
                     description: "Os dados do cliente foram atualizados com sucesso.",

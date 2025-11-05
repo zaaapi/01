@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { ThumbsUp, ThumbsDown } from "lucide-react"
 import { Conversation, Contact, FeedbackType } from "@/types"
 import { useToast } from "@/hooks/use-toast"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useData } from "@/lib/contexts/data-provider"
 
 interface ConversationFeedbackModalProps {
   open: boolean
@@ -29,20 +30,48 @@ export function ConversationFeedbackModal({
   contact,
 }: ConversationFeedbackModalProps) {
   const { toast } = useToast()
+  const { updateConversation } = useData()
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null)
   const [feedbackText, setFeedbackText] = useState("")
+
+  // Load existing feedback when modal opens
+  useEffect(() => {
+    if (open && conversation?.overallFeedback) {
+      setFeedbackType(conversation.overallFeedback.type)
+      setFeedbackText(conversation.overallFeedback.text || "")
+    } else if (!open) {
+      // Reset when modal closes
+      setFeedbackType(null)
+      setFeedbackText("")
+    }
+  }, [open, conversation])
 
   const handleSubmit = async () => {
     if (!feedbackType || !conversation) return
 
-    // Simular feedback (será implementado com DataProvider depois)
-    toast({
-      title: feedbackType === FeedbackType.LIKE ? "Like enviado" : "Dislike enviado",
-      description: "Feedback da conversa registrado com sucesso.",
-    })
-    setFeedbackType(null)
-    setFeedbackText("")
-    onOpenChange(false)
+    try {
+      await updateConversation(conversation.id, {
+        overallFeedback: {
+          type: feedbackType,
+          text: feedbackText || null,
+        },
+      })
+      
+      toast({
+        title: feedbackType === FeedbackType.LIKE ? "Like enviado" : "Dislike enviado",
+        description: "Feedback da conversa registrado com sucesso.",
+      })
+      
+      setFeedbackType(null)
+      setFeedbackText("")
+      onOpenChange(false)
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar o feedback.",
+        variant: "destructive",
+      })
+    }
   }
 
   if (!conversation || !contact) return null

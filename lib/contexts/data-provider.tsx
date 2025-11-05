@@ -67,19 +67,24 @@ interface DataContextType {
   updateAgent: (id: string, updates: Partial<Agent>) => Promise<void>
   deleteAgent: (id: string) => Promise<void>
   
-  // Contacts
+  // Contacts - Fetch Functions (Task 13)
+  fetchContacts: (tenantId: string, filters?: { status?: string, search?: string, searchField?: 'name' | 'phone' | 'email' }) => Promise<Contact[]>
+  fetchContact: (id: string) => Promise<Contact | null>
   createContact: (contact: Omit<Contact, "id" | "createdAt">) => Promise<void>
   updateContact: (id: string, updates: Partial<Contact>) => Promise<void>
   deleteContact: (id: string) => Promise<void>
   
-  // Conversations
+  // Conversations - Fetch Functions (Task 13)
+  fetchConversationsByContact: (contactId: string, tenantId: string, filters?: { status?: string }) => Promise<Conversation[]>
   createConversation: (conversation: Omit<Conversation, "id" | "createdAt">) => Promise<void>
   updateConversation: (id: string, updates: Partial<Conversation>) => Promise<void>
   deleteConversation: (id: string) => Promise<void>
   
-  // Messages
+  // Messages - Fetch Functions (Task 13)
+  fetchMessagesByConversation: (conversationId: string) => Promise<Message[]>
   createMessage: (message: Omit<Message, "id">) => Promise<void>
   updateMessage: (id: string, updates: Partial<Message>) => Promise<void>
+  updateMessageFeedback: (id: string, data: { feedback_type: 'like' | 'dislike', feedback_text?: string }) => Promise<void>
   deleteMessage: (id: string) => Promise<void>
   
   // BaseConhecimento - Fetch Functions (Task 11)
@@ -101,10 +106,12 @@ interface DataContextType {
   updateFeedback: (id: string, updates: Partial<Feedback>) => Promise<void>
   deleteFeedback: (id: string) => Promise<void>
   
-  // QuickReplyTemplates
+  // QuickReplyTemplates - Fetch Functions (Task 13)
+  fetchQuickReplyTemplates: (tenantId: string, orderByUsage?: boolean) => Promise<QuickReplyTemplate[]>
   createQuickReplyTemplate: (template: Omit<QuickReplyTemplate, "id" | "createdAt">) => Promise<void>
   updateQuickReplyTemplate: (id: string, updates: Partial<QuickReplyTemplate>) => Promise<void>
   deleteQuickReplyTemplate: (id: string) => Promise<void>
+  incrementQuickReplyUsage: (id: string) => Promise<void>
   
   // Global Filters
   updateGlobalFilters: (filters: Partial<GlobalFilters>) => Promise<void>
@@ -818,39 +825,349 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await deleteEntity(id, "agents")
   }, [deleteEntity])
 
-  // Contacts
+  // Contacts - Task 13: Fetch with filters
+  const fetchContacts = useCallback(async (
+    tenantId: string, 
+    filters?: { status?: string, search?: string, searchField?: 'name' | 'phone' | 'email' }
+  ): Promise<Contact[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      let query = supabase
+        .from("contacts")
+        .select("*")
+        .eq("tenant_id", tenantId)
+
+      // Apply status filter
+      if (filters?.status) {
+        query = query.eq("status", filters.status)
+      }
+
+      // Apply search filter
+      if (filters?.search && filters?.searchField) {
+        const searchField = filters.searchField === 'name' ? 'name' : 
+                           filters.searchField === 'phone' ? 'phone' : 'email'
+        query = query.ilike(searchField, `%${filters.search}%`)
+      }
+
+      const { data, error } = await query.order("last_interaction_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar contatos:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Map Supabase data to Contact type
+      return data.map((c) => ({
+        id: c.id,
+        tenantId: c.tenant_id,
+        name: c.name,
+        phone: c.phone,
+        phoneSecondary: c.phone_secondary || null,
+        email: c.email || null,
+        country: c.country || null,
+        city: c.city || null,
+        zipCode: c.zip_code || null,
+        addressStreet: c.address_street || null,
+        addressNumber: c.address_number || null,
+        addressComplement: c.address_complement || null,
+        cpf: c.cpf || null,
+        rg: c.rg || null,
+        lastInteraction: c.last_interaction_at || new Date().toISOString(),
+        status: c.status as Contact["status"],
+        customerDataExtracted: c.customer_data_extracted as Contact["customerDataExtracted"] || null,
+        tags: c.tags || null,
+        lastNegotiation: c.last_negotiation as Contact["lastNegotiation"] || null,
+        createdAt: c.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar contatos:", error)
+      return []
+    }
+  }, [])
+
+  const fetchContact = useCallback(async (id: string): Promise<Contact | null> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("*")
+        .eq("id", id)
+        .single()
+
+      if (error) {
+        console.error("Erro ao buscar contato:", error)
+        return null
+      }
+
+      if (!data) {
+        return null
+      }
+
+      // Map Supabase data to Contact type
+      return {
+        id: data.id,
+        tenantId: data.tenant_id,
+        name: data.name,
+        phone: data.phone,
+        phoneSecondary: data.phone_secondary || null,
+        email: data.email || null,
+        country: data.country || null,
+        city: data.city || null,
+        zipCode: data.zip_code || null,
+        addressStreet: data.address_street || null,
+        addressNumber: data.address_number || null,
+        addressComplement: data.address_complement || null,
+        cpf: data.cpf || null,
+        rg: data.rg || null,
+        lastInteraction: data.last_interaction_at || new Date().toISOString(),
+        status: data.status as Contact["status"],
+        customerDataExtracted: data.customer_data_extracted as Contact["customerDataExtracted"] || null,
+        tags: data.tags || null,
+        lastNegotiation: data.last_negotiation as Contact["lastNegotiation"] || null,
+        createdAt: data.created_at || new Date().toISOString(),
+      }
+    } catch (error) {
+      console.error("Exceção ao buscar contato:", error)
+      return null
+    }
+  }, [])
+
   const createContact = useCallback(async (contact: Omit<Contact, "id" | "createdAt">) => {
     await createEntity({ ...contact, createdAt: new Date().toISOString() }, "contacts")
   }, [createEntity])
 
   const updateContact = useCallback(async (id: string, updates: Partial<Contact>) => {
-    await updateEntity(id, updates, "contacts")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Prepare data for Supabase update
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.phone !== undefined) updateData.phone = updates.phone
+      if (updates.phoneSecondary !== undefined) updateData.phone_secondary = updates.phoneSecondary
+      if (updates.email !== undefined) updateData.email = updates.email
+      if (updates.country !== undefined) updateData.country = updates.country
+      if (updates.city !== undefined) updateData.city = updates.city
+      if (updates.zipCode !== undefined) updateData.zip_code = updates.zipCode
+      if (updates.addressStreet !== undefined) updateData.address_street = updates.addressStreet
+      if (updates.addressNumber !== undefined) updateData.address_number = updates.addressNumber
+      if (updates.addressComplement !== undefined) updateData.address_complement = updates.addressComplement
+      if (updates.cpf !== undefined) updateData.cpf = updates.cpf
+      if (updates.rg !== undefined) updateData.rg = updates.rg
+      if (updates.status !== undefined) updateData.status = updates.status
+      if (updates.customerDataExtracted !== undefined) updateData.customer_data_extracted = updates.customerDataExtracted
+      if (updates.tags !== undefined) updateData.tags = updates.tags
+      if (updates.lastNegotiation !== undefined) updateData.last_negotiation = updates.lastNegotiation
+      if (updates.lastInteraction !== undefined) updateData.last_interaction_at = updates.lastInteraction
+
+      const { error } = await supabase
+        .from("contacts")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar contato: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await updateEntity(id, updates, "contacts")
+    } catch (error) {
+      console.error("Erro ao atualizar contato:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteContact = useCallback(async (id: string) => {
     await deleteEntity(id, "contacts")
   }, [deleteEntity])
 
-  // Conversations
+  // Conversations - Task 13: Fetch by contact
+  const fetchConversationsByContact = useCallback(async (
+    contactId: string, 
+    tenantId: string, 
+    filters?: { status?: string }
+  ): Promise<Conversation[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      let query = supabase
+        .from("conversations")
+        .select("*")
+        .eq("contact_id", contactId)
+        .eq("tenant_id", tenantId)
+
+      // Apply status filter
+      if (filters?.status) {
+        query = query.eq("status", filters.status)
+      }
+
+      const { data, error } = await query.order("last_message_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar conversas:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Map Supabase data to Conversation type
+      return data.map((c) => ({
+        id: c.id,
+        contactId: c.contact_id,
+        tenantId: c.tenant_id,
+        status: c.status as Conversation["status"],
+        iaActive: c.ia_active ?? true,
+        lastMessageAt: c.last_message_at || new Date().toISOString(),
+        overallFeedback: c.overall_feedback ? {
+          type: c.overall_feedback.type as FeedbackType,
+          text: c.overall_feedback.text || null,
+        } : null,
+        createdAt: c.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar conversas:", error)
+      return []
+    }
+  }, [])
+
   const createConversation = useCallback(async (conversation: Omit<Conversation, "id" | "createdAt">) => {
     await createEntity({ ...conversation, createdAt: new Date().toISOString() }, "conversations")
   }, [createEntity])
 
   const updateConversation = useCallback(async (id: string, updates: Partial<Conversation>) => {
-    await updateEntity(id, updates, "conversations")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Prepare data for Supabase update
+      const updateData: Record<string, unknown> = {}
+      if (updates.status !== undefined) updateData.status = updates.status
+      if (updates.iaActive !== undefined) updateData.ia_active = updates.iaActive
+      if (updates.lastMessageAt !== undefined) updateData.last_message_at = updates.lastMessageAt
+      if (updates.overallFeedback !== undefined) updateData.overall_feedback = updates.overallFeedback
+
+      const { error } = await supabase
+        .from("conversations")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar conversa: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await updateEntity(id, updates, "conversations")
+    } catch (error) {
+      console.error("Erro ao atualizar conversa:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteConversation = useCallback(async (id: string) => {
     await deleteEntity(id, "conversations")
   }, [deleteEntity])
 
-  // Messages
+  // Messages - Task 13: Fetch by conversation and update feedback
+  const fetchMessagesByConversation = useCallback(async (conversationId: string): Promise<Message[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("timestamp", { ascending: true })
+
+      if (error) {
+        console.error("Erro ao buscar mensagens:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Map Supabase data to Message type
+      return data.map((m) => ({
+        id: m.id,
+        conversationId: m.conversation_id,
+        senderType: m.sender_type as Message["senderType"],
+        senderId: m.sender_id,
+        content: m.content,
+        timestamp: m.timestamp || new Date().toISOString(),
+        feedback: m.feedback ? {
+          type: m.feedback.type as FeedbackType,
+          text: m.feedback.text || null,
+        } : null,
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar mensagens:", error)
+      return []
+    }
+  }, [])
+
   const createMessage = useCallback(async (message: Omit<Message, "id">) => {
-    await createEntity(message, "messages")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Prepare data for Supabase insert
+      const insertData = {
+        conversation_id: message.conversationId,
+        sender_type: message.senderType,
+        sender_id: message.senderId,
+        content: message.content,
+        timestamp: message.timestamp,
+        feedback: message.feedback,
+      }
+
+      const { error } = await supabase.from("messages").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar mensagem: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await createEntity(message, "messages")
+    } catch (error) {
+      console.error("Erro ao criar mensagem:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateMessage = useCallback(async (id: string, updates: Partial<Message>) => {
     await updateEntity(id, updates, "messages")
+  }, [updateEntity])
+
+  const updateMessageFeedback = useCallback(async (
+    id: string, 
+    data: { feedback_type: 'like' | 'dislike', feedback_text?: string }
+  ): Promise<void> => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      const feedbackData = {
+        type: data.feedback_type,
+        text: data.feedback_text || null,
+      }
+
+      const { error } = await supabase
+        .from("messages")
+        .update({ feedback: feedbackData })
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar feedback da mensagem: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await updateEntity(id, { feedback: feedbackData as MessageFeedback }, "messages")
+    } catch (error) {
+      console.error("Erro ao atualizar feedback da mensagem:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteMessage = useCallback(async (id: string) => {
@@ -1198,18 +1515,172 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await deleteEntity(id, "feedbacks")
   }, [deleteEntity])
 
-  // QuickReplyTemplates
+  // QuickReplyTemplates - Task 13: Fetch with usage ordering
+  const fetchQuickReplyTemplates = useCallback(async (
+    tenantId: string, 
+    orderByUsage: boolean = false
+  ): Promise<QuickReplyTemplate[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      let query = supabase
+        .from("quick_reply_templates")
+        .select("*")
+        .eq("tenant_id", tenantId)
+
+      if (orderByUsage) {
+        query = query.order("usage_count", { ascending: false })
+      } else {
+        query = query.order("created_at", { ascending: false })
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error("Erro ao buscar respostas rápidas:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Map Supabase data to QuickReplyTemplate type
+      return data.map((qrt) => ({
+        id: qrt.id,
+        tenantId: qrt.tenant_id,
+        title: qrt.title,
+        message: qrt.message,
+        icon: qrt.icon || null,
+        usageCount: qrt.usage_count || 0,
+        createdAt: qrt.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar respostas rápidas:", error)
+      return []
+    }
+  }, [])
+
   const createQuickReplyTemplate = useCallback(async (template: Omit<QuickReplyTemplate, "id" | "createdAt">) => {
-    await createEntity({ ...template, createdAt: new Date().toISOString() }, "quickReplyTemplates")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Prepare data for Supabase insert
+      const insertData = {
+        tenant_id: template.tenantId,
+        title: template.title,
+        message: template.message,
+        icon: template.icon,
+        usage_count: template.usageCount || 0,
+      }
+
+      const { error } = await supabase.from("quick_reply_templates").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar resposta rápida: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await createEntity({ ...template, createdAt: new Date().toISOString() }, "quickReplyTemplates")
+    } catch (error) {
+      console.error("Erro ao criar resposta rápida:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateQuickReplyTemplate = useCallback(async (id: string, updates: Partial<QuickReplyTemplate>) => {
-    await updateEntity(id, updates, "quickReplyTemplates")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Prepare data for Supabase update
+      const updateData: Record<string, unknown> = {}
+      if (updates.title !== undefined) updateData.title = updates.title
+      if (updates.message !== undefined) updateData.message = updates.message
+      if (updates.icon !== undefined) updateData.icon = updates.icon
+      if (updates.usageCount !== undefined) updateData.usage_count = updates.usageCount
+
+      const { error } = await supabase
+        .from("quick_reply_templates")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar resposta rápida: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await updateEntity(id, updates, "quickReplyTemplates")
+    } catch (error) {
+      console.error("Erro ao atualizar resposta rápida:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteQuickReplyTemplate = useCallback(async (id: string) => {
-    await deleteEntity(id, "quickReplyTemplates")
+    try {
+      const supabase = createSupabaseClient()
+      
+      const { error } = await supabase
+        .from("quick_reply_templates")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao excluir resposta rápida: ${error.message}`)
+      }
+
+      // Update local state for synchronization
+      await deleteEntity(id, "quickReplyTemplates")
+    } catch (error) {
+      console.error("Erro ao excluir resposta rápida:", error)
+      throw error
+    }
   }, [deleteEntity])
+
+  const incrementQuickReplyUsage = useCallback(async (id: string): Promise<void> => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Increment usage_count in Supabase using RPC or raw update
+      const { error } = await supabase.rpc("increment_quick_reply_usage", { quick_reply_id: id })
+
+      if (error) {
+        // If RPC doesn't exist, fallback to manual increment
+        console.warn("RPC não disponível, usando fallback manual:", error)
+        
+        // Get current usage count
+        const { data: currentData, error: fetchError } = await supabase
+          .from("quick_reply_templates")
+          .select("usage_count")
+          .eq("id", id)
+          .single()
+
+        if (fetchError) {
+          throw new Error(`Erro ao buscar resposta rápida: ${fetchError.message}`)
+        }
+
+        const currentCount = currentData?.usage_count || 0
+
+        // Update with incremented value
+        const { error: updateError } = await supabase
+          .from("quick_reply_templates")
+          .update({ usage_count: currentCount + 1 })
+          .eq("id", id)
+
+        if (updateError) {
+          throw new Error(`Erro ao incrementar uso: ${updateError.message}`)
+        }
+      }
+
+      // Update local state
+      const quickReply = state.quickReplyTemplates.find(qr => qr.id === id)
+      if (quickReply) {
+        await updateEntity(id, { usageCount: (quickReply.usageCount || 0) + 1 }, "quickReplyTemplates")
+      }
+    } catch (error) {
+      console.error("Erro ao incrementar uso de resposta rápida:", error)
+      throw error
+    }
+  }, [state.quickReplyTemplates, updateEntity])
 
   // Global Filters
   const updateGlobalFilters = useCallback(async (filters: Partial<GlobalFilters>) => {
@@ -1712,14 +2183,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createAgent,
     updateAgent,
     deleteAgent,
+    fetchContacts,
+    fetchContact,
     createContact,
     updateContact,
     deleteContact,
+    fetchConversationsByContact,
     createConversation,
     updateConversation,
     deleteConversation,
+    fetchMessagesByConversation,
     createMessage,
     updateMessage,
+    updateMessageFeedback,
     deleteMessage,
     fetchBaseConhecimentos,
     createBaseConhecimento,
@@ -1734,9 +2210,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createFeedback,
     updateFeedback,
     deleteFeedback,
+    fetchQuickReplyTemplates,
     createQuickReplyTemplate,
     updateQuickReplyTemplate,
     deleteQuickReplyTemplate,
+    incrementQuickReplyUsage,
     updateGlobalFilters,
     resetData,
     fetchUserProfile,
