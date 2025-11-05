@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react"
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { User, UserRole } from "@/types"
 import { createSupabaseClient } from "@/db"
@@ -78,30 +78,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Escutar mudanças de autenticação
   useEffect(() => {
+    let isMounted = true
+    let loadingTimeout: NodeJS.Timeout | null = null
+
+    // Timeout de segurança para garantir que o loading sempre seja desativado
+    loadingTimeout = setTimeout(() => {
+      if (isMounted) {
+        setIsLoadingAuth(false)
+      }
+    }, 5000) // Máximo 5 segundos de loading
+
     // Verificar sessão inicial
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         
+        if (!isMounted) return
+
         if (session?.user) {
           const userProfile = await fetchUserProfile(session.user.id)
-          setUser(userProfile)
-          
-          // Se o usuário está na página de login/signup e já está autenticado, redirecionar
-          if (userProfile && typeof window !== "undefined") {
-            const currentPath = window.location.pathname
-            if (currentPath === "/login" || currentPath === "/signup") {
-              redirectByRole(userProfile.role)
+          if (isMounted) {
+            setUser(userProfile)
+            
+            // Se o usuário está na página de login/signup e já está autenticado, redirecionar
+            if (userProfile && typeof window !== "undefined") {
+              const currentPath = window.location.pathname
+              if (currentPath === "/login" || currentPath === "/signup") {
+                redirectByRole(userProfile.role)
+              }
             }
           }
         } else {
-          setUser(null)
+          if (isMounted) {
+            setUser(null)
+          }
         }
       } catch (error) {
         console.error("Erro ao verificar sessão:", error)
-        setUser(null)
+        if (isMounted) {
+          setUser(null)
+        }
       } finally {
-        setIsLoadingAuth(false)
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout)
+          loadingTimeout = null
+        }
+        if (isMounted) {
+          setIsLoadingAuth(false)
+        }
       }
     }
 
@@ -111,27 +135,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+
+      // Limpar timeout de segurança quando há mudança de autenticação
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+        loadingTimeout = null
+      }
+
       if (event === "SIGNED_IN" && session?.user) {
         const userProfile = await fetchUserProfile(session.user.id)
-        setUser(userProfile)
+        if (isMounted) {
+          setUser(userProfile)
 
-        // Redirecionar baseado na role
-        if (userProfile) {
-          redirectByRole(userProfile.role)
+          // Redirecionar baseado na role
+          if (userProfile) {
+            redirectByRole(userProfile.role)
+          }
         }
       } else if (event === "SIGNED_OUT") {
-        setUser(null)
-        router.replace("/login")
+        if (isMounted) {
+          setUser(null)
+          router.replace("/login")
+        }
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Atualizar perfil quando o token é renovado
         const userProfile = await fetchUserProfile(session.user.id)
-        setUser(userProfile)
+        if (isMounted) {
+          setUser(userProfile)
+        }
+      } else if (event === "INITIAL_SESSION") {
+        // Evento inicial - já tratado pelo checkSession acima
+        // Mas garantimos que o loading seja desativado
       }
 
-      setIsLoadingAuth(false)
+      if (isMounted) {
+        setIsLoadingAuth(false)
+      }
     })
 
     return () => {
+      isMounted = false
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+      }
       subscription.unsubscribe()
     }
   }, [supabase, fetchUserProfile, router, redirectByRole])
