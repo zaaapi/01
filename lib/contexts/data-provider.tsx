@@ -25,12 +25,15 @@ interface DataContextType {
   state: MockAppState
   isLoading: boolean
   
-  // Tenants
+  // Tenants - Fetch Functions (Task 6)
+  fetchTenants: (filter?: "all" | "active" | "inactive") => Promise<Tenant[]>
   createTenant: (tenant: Omit<Tenant, "id" | "createdAt">) => Promise<void>
   updateTenant: (id: string, updates: Partial<Tenant>) => Promise<void>
   deleteTenant: (id: string) => Promise<void>
   
-  // Users
+  // Users - Fetch Functions (Task 6)
+  fetchUsersByTenant: (tenantId: string) => Promise<User[]>
+  fetchAllFeatureModules: () => Promise<FeatureModule[]>
   createUser: (user: Omit<User, "id" | "createdAt">) => Promise<void>
   updateUser: (id: string, updates: Partial<User>) => Promise<void>
   deleteUser: (id: string) => Promise<void>
@@ -235,30 +238,292 @@ export function DataProvider({ children }: { children: ReactNode }) {
     persistState(newState)
   }, [state, persistState])
 
-  // Tenants
+  // Tenants - Fetch Functions (Task 6)
+  const fetchTenants = useCallback(async (filter: "all" | "active" | "inactive" = "all"): Promise<Tenant[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      let query = supabase.from("tenants").select("*")
+
+      if (filter === "active") {
+        query = query.eq("is_active", true)
+      } else if (filter === "inactive") {
+        query = query.eq("is_active", false)
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar tenants:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo Tenant
+      return data.map((t) => ({
+        id: t.id,
+        name: t.name,
+        neurocoreId: t.neurocore_id,
+        isActive: t.is_active ?? true,
+        cnpj: t.cnpj || "",
+        phone: t.phone || "",
+        responsibleTech: t.responsible_tech || {
+          name: "",
+          whatsapp: "",
+          email: "",
+        },
+        responsibleFinance: t.responsible_finance || {
+          name: "",
+          whatsapp: "",
+          email: "",
+        },
+        plan: t.plan || "Basic",
+        createdAt: t.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar tenants:", error)
+      return []
+    }
+  }, [])
+
   const createTenant = useCallback(async (tenant: Omit<Tenant, "id" | "createdAt">) => {
-    await createEntity({ ...tenant, createdAt: new Date().toISOString() }, "tenants")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para inserção no Supabase
+      const insertData = {
+        name: tenant.name,
+        neurocore_id: tenant.neurocoreId,
+        is_active: tenant.isActive,
+        cnpj: tenant.cnpj,
+        phone: tenant.phone,
+        responsible_tech: tenant.responsibleTech,
+        responsible_finance: tenant.responsibleFinance,
+        plan: tenant.plan,
+        master_integration_url: (tenant as any).masterIntegrationUrl || null,
+        master_integration_active: (tenant as any).masterIntegrationActive ?? false,
+      }
+
+      const { error } = await supabase.from("tenants").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar tenant: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await createEntity({ ...tenant, createdAt: new Date().toISOString() }, "tenants")
+    } catch (error) {
+      console.error("Erro ao criar tenant:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateTenant = useCallback(async (id: string, updates: Partial<Tenant>) => {
-    await updateEntity(id, updates, "tenants")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.neurocoreId !== undefined) updateData.neurocore_id = updates.neurocoreId
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive
+      if (updates.cnpj !== undefined) updateData.cnpj = updates.cnpj
+      if (updates.phone !== undefined) updateData.phone = updates.phone
+      if (updates.responsibleTech !== undefined) updateData.responsible_tech = updates.responsibleTech
+      if (updates.responsibleFinance !== undefined) updateData.responsible_finance = updates.responsibleFinance
+      if (updates.plan !== undefined) updateData.plan = updates.plan
+      if ((updates as any).masterIntegrationUrl !== undefined) updateData.master_integration_url = (updates as any).masterIntegrationUrl
+      if ((updates as any).masterIntegrationActive !== undefined) updateData.master_integration_active = (updates as any).masterIntegrationActive
+
+      const { error } = await supabase
+        .from("tenants")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar tenant: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "tenants")
+    } catch (error) {
+      console.error("Erro ao atualizar tenant:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteTenant = useCallback(async (id: string) => {
-    await deleteEntity(id, "tenants")
+    try {
+      const supabase = createSupabaseClient()
+      
+      const { error } = await supabase
+        .from("tenants")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao excluir tenant: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await deleteEntity(id, "tenants")
+    } catch (error) {
+      console.error("Erro ao excluir tenant:", error)
+      throw error
+    }
   }, [deleteEntity])
 
-  // Users
+  // Users - Fetch Functions (Task 6)
+  const fetchUsersByTenant = useCallback(async (tenantId: string): Promise<User[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar usuários do tenant:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo User
+      return data.map((u) => ({
+        id: u.id,
+        tenantId: u.tenant_id || null,
+        fullName: u.full_name || u.email,
+        email: u.email,
+        whatsappNumber: u.whatsapp_number || "",
+        role: u.role as User["role"],
+        avatarUrl: u.avatar_url || "",
+        modules: (u.modules || []) as User["modules"],
+        isActive: u.is_active ?? true,
+        lastSignInAt: u.last_sign_in_at || null,
+        createdAt: u.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar usuários do tenant:", error)
+      return []
+    }
+  }, [])
+
+  const fetchAllFeatureModules = useCallback(async (): Promise<FeatureModule[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("feature_modules")
+        .select("*")
+        .order("name")
+
+      if (error) {
+        console.error("Erro ao buscar feature modules:", error)
+        return state.featureModules
+      }
+
+      if (!data) {
+        return state.featureModules
+      }
+
+      return data.map((fm) => ({
+        id: fm.id,
+        key: fm.key as FeatureModule["key"],
+        name: fm.name,
+        description: fm.description || "",
+        icon: fm.icon || "settings",
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar feature modules:", error)
+      return state.featureModules
+    }
+  }, [state.featureModules])
+
   const createUser = useCallback(async (user: Omit<User, "id" | "createdAt">) => {
-    await createEntity({ ...user, createdAt: new Date().toISOString() }, "users")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para inserção no Supabase
+      const insertData = {
+        tenant_id: user.tenantId,
+        full_name: user.fullName,
+        email: user.email,
+        whatsapp_number: user.whatsappNumber,
+        role: user.role,
+        avatar_url: user.avatarUrl,
+        modules: user.modules,
+        is_active: user.isActive,
+      }
+
+      const { error } = await supabase.from("users").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar usuário: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await createEntity({ ...user, createdAt: new Date().toISOString() }, "users")
+    } catch (error) {
+      console.error("Erro ao criar usuário:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateUser = useCallback(async (id: string, updates: Partial<User>) => {
-    await updateEntity(id, updates, "users")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.fullName !== undefined) updateData.full_name = updates.fullName
+      if (updates.whatsappNumber !== undefined) updateData.whatsapp_number = updates.whatsappNumber
+      if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl
+      if (updates.modules !== undefined) updateData.modules = updates.modules
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive
+      // Nota: email não deve ser atualizado aqui, pois está no auth.users do Supabase
+      // Se necessário atualizar email, isso deve ser feito via Supabase Auth Admin API
+
+      const { error } = await supabase
+        .from("users")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar usuário: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "users")
+    } catch (error) {
+      console.error("Erro ao atualizar usuário:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteUser = useCallback(async (id: string) => {
-    await deleteEntity(id, "users")
+    try {
+      const supabase = createSupabaseClient()
+      
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao excluir usuário: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await deleteEntity(id, "users")
+    } catch (error) {
+      console.error("Erro ao excluir usuário:", error)
+      throw error
+    }
   }, [deleteEntity])
 
   // NeuroCores
@@ -537,9 +802,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value: DataContextType = {
     state,
     isLoading,
+    fetchTenants,
     createTenant,
     updateTenant,
     deleteTenant,
+    fetchUsersByTenant,
+    fetchAllFeatureModules,
     createUser,
     updateUser,
     deleteUser,

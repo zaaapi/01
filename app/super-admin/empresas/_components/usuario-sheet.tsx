@@ -178,10 +178,16 @@ export function UsuarioSheet({
                         type="email"
                         placeholder="joao@empresa.com"
                         {...field}
-                        disabled={isViewMode}
+                        disabled={isViewMode || isEditMode}
+                        readOnly={isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
+                    {isEditMode && (
+                      <p className="text-xs text-muted-foreground">
+                        O email não pode ser alterado após a criação do usuário.
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ import { User as UserType, UserRole, FeatureModuleKey } from "@/types"
 import { UsuarioSheet } from "./usuario-sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { EmptyState } from "@/components/shared/empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface GerenciarUsuariosModalProps {
   open: boolean
@@ -49,12 +50,33 @@ export function GerenciarUsuariosModal({
   empresaId,
   empresaNome,
 }: GerenciarUsuariosModalProps) {
-  const { state, createUser, updateUser, deleteUser } = useData()
+  const { state, createUser, updateUser, deleteUser, fetchUsersByTenant } = useData()
   const { toast } = useToast()
+  const [usuarios, setUsuarios] = useState<UserType[]>([])
+  const [isLoadingUsuarios, setIsLoadingUsuarios] = useState(true)
 
-  const usuarios = useMemo(() => {
-    return state.users.filter((u) => u.tenantId === empresaId)
-  }, [state.users, empresaId])
+  // Buscar usuários do tenant quando o modal abrir
+  useEffect(() => {
+    if (open && empresaId) {
+      const loadUsuarios = async () => {
+        setIsLoadingUsuarios(true)
+        try {
+          const fetchedUsers = await fetchUsersByTenant(empresaId)
+          setUsuarios(fetchedUsers)
+        } catch (error) {
+          console.error("Erro ao carregar usuários:", error)
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os usuários.",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLoadingUsuarios(false)
+        }
+      }
+      loadUsuarios()
+    }
+  }, [open, empresaId, fetchUsersByTenant, toast])
 
   const [sheetState, setSheetState] = useState<{
     open: boolean
@@ -105,6 +127,10 @@ export function GerenciarUsuariosModal({
           title: "Usuário criado",
           description: "O usuário foi criado com sucesso.",
         })
+        
+        // Recarregar usuários após criar
+        const fetchedUsers = await fetchUsersByTenant(empresaId)
+        setUsuarios(fetchedUsers)
       } else if (sheetState.mode === "edit" && sheetState.usuario) {
         await updateUser(sheetState.usuario.id, {
           fullName: data.fullName,
@@ -117,6 +143,10 @@ export function GerenciarUsuariosModal({
           title: "Usuário atualizado",
           description: "O usuário foi atualizado com sucesso.",
         })
+        
+        // Recarregar usuários após atualizar
+        const fetchedUsers = await fetchUsersByTenant(empresaId)
+        setUsuarios(fetchedUsers)
       }
       setSheetState({ open: false, mode: "view", usuario: null })
     } catch (error) {
@@ -137,6 +167,10 @@ export function GerenciarUsuariosModal({
           description: "O usuário foi excluído com sucesso.",
         })
         setDeleteDialog({ open: false, usuario: null })
+        
+        // Recarregar usuários após excluir
+        const fetchedUsers = await fetchUsersByTenant(empresaId)
+        setUsuarios(fetchedUsers)
       } catch (error) {
         toast({
           title: "Erro",
@@ -175,7 +209,13 @@ export function GerenciarUsuariosModal({
               </Button>
             </div>
 
-            {usuarios.length === 0 ? (
+            {isLoadingUsuarios ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : usuarios.length === 0 ? (
               <EmptyState
                 icon={User}
                 title="Nenhum usuário cadastrado"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { PageContainer } from "@/components/shared/page-container"
 import { PageHeader } from "@/components/shared/page-header"
 import { Button } from "@/components/ui/button"
@@ -36,9 +36,12 @@ import { useRouter } from "next/navigation"
 
 export default function EmpresasPage() {
   const router = useRouter()
-  const { state, isLoading, updateTenant, createTenant } = useData()
+  const { state, isLoading, updateTenant, createTenant, fetchTenants, fetchUsersByTenant } = useData()
   const { toast } = useToast()
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("active")
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [users, setUsers] = useState(state.users)
+  const [isLoadingTenants, setIsLoadingTenants] = useState(true)
 
   // Estado dos modais
   const [addEditModal, setAddEditModal] = useState<{
@@ -81,9 +84,39 @@ export default function EmpresasPage() {
     onNavigate3: () => router.push("/super-admin/perfil"),
   })
 
+  // Buscar tenants do Supabase quando o componente carregar ou o filtro mudar
+  useEffect(() => {
+    const loadTenants = async () => {
+      setIsLoadingTenants(true)
+      try {
+        const fetchedTenants = await fetchTenants(filter)
+        setTenants(fetchedTenants)
+        
+        // Buscar usuários de todos os tenants para calcular contagens
+        const allUsers: typeof state.users = []
+        for (const tenant of fetchedTenants) {
+          const tenantUsers = await fetchUsersByTenant(tenant.id)
+          allUsers.push(...tenantUsers)
+        }
+        setUsers(allUsers)
+      } catch (error) {
+        console.error("Erro ao carregar tenants:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as empresas.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingTenants(false)
+      }
+    }
+
+    loadTenants()
+  }, [filter, fetchTenants, fetchUsersByTenant, toast])
+
   // Calcular quantidade de usuários por empresa
   const getUsuariosCount = (tenantId: string) => {
-    return state.users.filter((u) => u.tenantId === tenantId).length
+    return users.filter((u) => u.tenantId === tenantId).length
   }
 
   // Calcular conversas por empresa
@@ -98,7 +131,7 @@ export default function EmpresasPage() {
 
   // Empresas com dados calculados
   const empresasList = useMemo(() => {
-    return state.tenants.map((tenant) => {
+    return tenants.map((tenant) => {
       const neurocore = state.neurocores.find((nc) => nc.id === tenant.neurocoreId)
       return {
         ...tenant,
@@ -107,7 +140,7 @@ export default function EmpresasPage() {
         conversas: getConversasCount(tenant.id),
       }
     })
-  }, [state.tenants, state.neurocores, state.users, state.conversations])
+  }, [tenants, state.neurocores, users])
 
   const filteredEmpresas = empresasList.filter((empresa) => {
     if (filter === "all") return true
@@ -125,7 +158,17 @@ export default function EmpresasPage() {
     setAddEditModal({ open: true, empresa })
   }
 
-  const handleSaveEmpresa = async (data: { name: string; neurocoreId: string; cnpj: string; phone: string; plan: string }) => {
+  const handleSaveEmpresa = async (data: {
+    name: string
+    neurocoreId: string
+    cnpj: string
+    phone: string
+    plan: string
+    responsibleTech: { name: string; whatsapp: string; email: string }
+    responsibleFinance: { name: string; whatsapp: string; email: string }
+    masterIntegrationUrl?: string
+    masterIntegrationActive: boolean
+  }) => {
     try {
       if (addEditModal.empresa) {
         // Editar empresa existente
@@ -135,7 +178,11 @@ export default function EmpresasPage() {
           cnpj: data.cnpj,
           phone: data.phone,
           plan: data.plan,
-        })
+          responsibleTech: data.responsibleTech,
+          responsibleFinance: data.responsibleFinance,
+          masterIntegrationUrl: data.masterIntegrationUrl,
+          masterIntegrationActive: data.masterIntegrationActive,
+        } as any)
         toast({
           title: "Empresa atualizada",
           description: "A empresa foi atualizada com sucesso.",
@@ -149,23 +196,21 @@ export default function EmpresasPage() {
           cnpj: data.cnpj,
           phone: data.phone,
           plan: data.plan,
-          responsibleTech: {
-            name: "",
-            whatsapp: "",
-            email: "",
-          },
-          responsibleFinance: {
-            name: "",
-            whatsapp: "",
-            email: "",
-          },
-        })
+          responsibleTech: data.responsibleTech,
+          responsibleFinance: data.responsibleFinance,
+          masterIntegrationUrl: data.masterIntegrationUrl,
+          masterIntegrationActive: data.masterIntegrationActive,
+        } as any)
         toast({
           title: "Empresa criada",
           description: "A empresa foi criada com sucesso.",
         })
       }
       setAddEditModal({ open: false, empresa: null })
+      
+      // Recarregar tenants após salvar
+      const fetchedTenants = await fetchTenants(filter)
+      setTenants(fetchedTenants)
     } catch (error) {
       toast({
         title: "Erro",
@@ -189,6 +234,10 @@ export default function EmpresasPage() {
           description: "A empresa foi inativada com sucesso.",
         })
         setInativarModal({ open: false, empresa: null })
+        
+        // Recarregar tenants após inativar
+        const fetchedTenants = await fetchTenants(filter)
+        setTenants(fetchedTenants)
       } catch (error) {
         toast({
           title: "Erro",
@@ -212,6 +261,10 @@ export default function EmpresasPage() {
           description: "A empresa foi reativada com sucesso.",
         })
         setReativarModal({ open: false, empresa: null })
+        
+        // Recarregar tenants após reativar
+        const fetchedTenants = await fetchTenants(filter)
+        setTenants(fetchedTenants)
       } catch (error) {
         toast({
           title: "Erro",
@@ -227,7 +280,7 @@ export default function EmpresasPage() {
     setUsuariosModal({ open: true, empresa })
   }
 
-  if (isLoading) {
+  if (isLoading || isLoadingTenants) {
     return (
       <PageContainer>
         <PageHeader title="Gerenciar Empresas" description="Gerencie empresas, usuários e configurações" />
