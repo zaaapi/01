@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Sidebar } from "@/components/shared/sidebar"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
+import { AuthGuard } from "@/components/shared/auth-guard"
 
 export default function SuperAdminLayout({
   children,
@@ -12,7 +13,8 @@ export default function SuperAdminLayout({
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <AuthGuard allowedRoles={["super_admin"]}>
+      <div className="flex h-screen overflow-hidden">
       <Sidebar 
         platform="super-admin" 
         isCollapsed={isCollapsed}
@@ -35,5 +37,6 @@ export default function SuperAdminLayout({
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
+    </AuthGuard>
   )
 }

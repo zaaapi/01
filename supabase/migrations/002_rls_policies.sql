@@ -72,6 +72,10 @@ FOR SELECT USING (get_user_role() = 'super_admin');
 CREATE POLICY "Super admins can manage all users" ON public.users
 FOR ALL USING (get_user_role() = 'super_admin') WITH CHECK (get_user_role() = 'super_admin');
 
+-- IMPORTANTE: Usuários podem sempre ver seu próprio perfil, independente de tenant_id
+CREATE POLICY "Users can view their own profile" ON public.users
+FOR SELECT USING (auth.uid() = id);
+
 CREATE POLICY "Tenant users can view users from their tenant" ON public.users
 FOR SELECT USING (tenant_id = get_user_tenant_id());
 

@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { createBrowserClient, createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -11,7 +10,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Cliente para uso no servidor (Server Components, Server Actions)
 // IMPORTANTE: Use createSupabaseServerClient() em Server Components/Actions
-export function createSupabaseServerClient() {
+export function createSupabaseServerClient(): SupabaseClient {
+  // Import dinâmico para evitar erro em Client Components
+  const { cookies } = require('next/headers');
   const cookieStore = cookies();
   
   return createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -19,7 +20,7 @@ export function createSupabaseServerClient() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
@@ -35,12 +36,10 @@ export function createSupabaseServerClient() {
 }
 
 // Cliente para uso no cliente (Client Components)
+// Esta função pode ser chamada em Client Components sem problemas
 export function createSupabaseClient() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
-
-// Cliente simples para uso quando não há necessidade de cookies (use com cuidado)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Para helpers de autenticação, use os arquivos em db/auth-helpers.ts
 // que são otimizados para Server Components e Server Actions

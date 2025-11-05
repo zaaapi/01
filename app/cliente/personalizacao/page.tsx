@@ -20,10 +20,10 @@ import { PersonalizarAgenteModal } from "./_components/personalizar-agente-modal
 export default function PersonalizacaoPage() {
   const router = useRouter()
   const { state, isLoading } = useData()
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
 
-  const tenantId = currentAuthUser?.tenantId
+  const tenantId = user?.tenantId
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [modalOpen, setModalOpen] = useState(false)

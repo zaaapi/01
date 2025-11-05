@@ -57,10 +57,10 @@ import { ConversationFeedbackModal } from "./_components/conversation-feedback-m
 
 export default function LiveChatPage() {
   const { state, isLoading, updateConversation, createMessage, updateContact } = useData()
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
 
-  const tenantId = currentAuthUser?.tenantId
+  const tenantId = user?.tenantId
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<ConversationStatus | "all">("all")
@@ -161,13 +161,13 @@ export default function LiveChatPage() {
   }, [state.quickReplyTemplates, tenantId])
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversationId || !currentAuthUser) return
+    if (!messageInput.trim() || !selectedConversationId || !user) return
 
     try {
       await createMessage({
         conversationId: selectedConversationId,
         senderType: MessageSenderType.ATENDENTE,
-        senderId: currentAuthUser.id,
+        senderId: user.id,
         content: messageInput.trim(),
         timestamp: new Date().toISOString(),
         feedback: null,
@@ -448,7 +448,7 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
                   messages={conversationMessages}
                   selectedConversation={selectedConversation}
                   tenantId={tenantId}
-                  currentUserId={currentAuthUser?.id || null}
+                  currentUserId={user?.id || null}
                 />
                 <div ref={messageEndRef} />
               </div>

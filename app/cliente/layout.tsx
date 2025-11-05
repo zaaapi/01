@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/shared/sidebar"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
+import { AuthGuard } from "@/components/shared/auth-guard"
 
 export default function ClienteLayout({
   children,
@@ -19,7 +20,8 @@ export default function ClienteLayout({
   }, [pathname])
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <AuthGuard allowedRoles={["usuario_cliente"]}>
+      <div className="flex h-screen overflow-hidden">
       <Sidebar 
         platform="cliente" 
         isCollapsed={isCollapsed}
@@ -42,5 +44,6 @@ export default function ClienteLayout({
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
+    </AuthGuard>
   )
 }

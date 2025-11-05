@@ -34,11 +34,11 @@ interface ChatMessage {
 export default function TreinamentoPage() {
   const router = useRouter()
   const { state, isLoading, updateSynapse, deleteSynapse } = useData()
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
-  const tenantId = currentAuthUser?.tenantId
+  const tenantId = user?.tenantId
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")

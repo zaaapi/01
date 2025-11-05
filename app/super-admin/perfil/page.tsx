@@ -36,7 +36,7 @@ type FormValues = z.infer<typeof perfilSchema>
 
 export default function PerfilSuperAdminPage() {
   const router = useRouter()
-  const { currentAuthUser, logout } = useAuth()
+  const { user, signOut } = useAuth()
   const { resetData } = useData()
   const { toast } = useToast()
 
@@ -49,13 +49,13 @@ export default function PerfilSuperAdminPage() {
   })
 
   useEffect(() => {
-    if (currentAuthUser) {
+    if (user) {
       form.reset({
-        name: currentAuthUser.fullName,
-        email: currentAuthUser.email,
+        name: user.fullName,
+        email: user.email,
       })
     }
-  }, [currentAuthUser, form])
+  }, [user, form])
 
   // Atalhos de teclado
   useKeyboardShortcuts({
@@ -80,12 +80,11 @@ export default function PerfilSuperAdminPage() {
     })
   }
 
-  const handleLogout = () => {
-    logout()
-    router.push("/logged-out")
+  const handleLogout = async () => {
+    await signOut()
   }
 
-  if (!currentAuthUser) {
+  if (!user) {
     return null
   }
 

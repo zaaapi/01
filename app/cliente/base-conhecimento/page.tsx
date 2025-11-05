@@ -32,10 +32,10 @@ import { GerenciarSynapsesModal } from "./_components/gerenciar-synapses-modal"
 export default function BaseConhecimentoPage() {
   const router = useRouter()
   const { state, isLoading, createBaseConhecimento, updateBaseConhecimento } = useData()
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
 
-  const tenantId = currentAuthUser?.tenantId
+  const tenantId = user?.tenantId
 
   const [addEditModal, setAddEditModal] = useState<{
     open: boolean

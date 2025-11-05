@@ -1,8 +1,46 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/lib/contexts/auth-context"
 
 export default function Home() {
+  const router = useRouter()
+  const { user, isLoadingAuth } = useAuth()
+
+  useEffect(() => {
+    if (!isLoadingAuth && user) {
+      // Se já está logado, redirecionar para o dashboard apropriado
+      if (user.role === "super_admin") {
+        router.replace("/super-admin")
+      } else if (user.role === "usuario_cliente") {
+        router.replace("/cliente")
+      }
+    }
+  }, [user, isLoadingAuth, router])
+
+  // Mostrar loading enquanto verifica autenticação
+  if (isLoadingAuth) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-8">
+        <div className="text-muted-foreground">Carregando...</div>
+      </main>
+    )
+  }
+
+  // Se está logado, o useEffect vai redirecionar, mas enquanto isso mostra loading
+  if (user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-8">
+        <div className="text-muted-foreground">Redirecionando...</div>
+      </main>
+    )
+  }
+
+  // Página inicial para usuários não logados
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-8">
       <div className="text-center space-y-4">
@@ -26,9 +64,9 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/super-admin">
+            <Link href="/login">
               <Button className="w-full" size="lg">
-                Acessar Plataforma Super Admin
+                Fazer Login
               </Button>
             </Link>
           </CardContent>
@@ -45,20 +83,25 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/cliente">
+            <Link href="/login">
               <Button variant="secondary" className="w-full" size="lg">
-                Acessar Plataforma Cliente
+                Fazer Login
               </Button>
             </Link>
           </CardContent>
         </Card>
       </div>
 
-      <div className="text-center text-sm text-muted-foreground">
+      <div className="text-center text-sm text-muted-foreground space-y-2">
         <p>🚀 Projeto em desenvolvimento - v1.0.0</p>
         <p>Stack: Next.js 14 • TypeScript • Tailwind CSS • Shadcn/ui</p>
+        <p className="pt-4">
+          Não tem uma conta?{" "}
+          <Link href="/signup" className="text-primary hover:underline">
+            Criar conta
+          </Link>
+        </p>
       </div>
     </main>
   )
 }
-

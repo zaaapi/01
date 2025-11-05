@@ -68,14 +68,14 @@ const PLAN_LIMITS: Record<string, { conversations: number; messages: number; syn
 }
 
 function UsagePanel({ isCollapsed }: { isCollapsed: boolean }) {
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const { state } = useData()
 
-  const tenant = currentAuthUser?.tenantId
-    ? state.tenants.find((t) => t.id === currentAuthUser.tenantId)
+  const tenant = user?.tenantId
+    ? state.tenants.find((t) => t.id === user.tenantId)
     : null
 
-  if (!tenant || currentAuthUser?.role === "super_admin") {
+  if (!tenant || user?.role === "super_admin") {
     return null
   }
 

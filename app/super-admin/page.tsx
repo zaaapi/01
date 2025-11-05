@@ -38,7 +38,7 @@ import dayjs from "dayjs"
 export default function SuperAdminDashboard() {
   const router = useRouter()
   const { state, isLoading, updateGlobalFilters } = useData()
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const [localPeriod, setLocalPeriod] = useState<GlobalFilterPeriod>(state.globalFilters.period)
   const [localConversationSelection, setLocalConversationSelection] = useState<GlobalFilterConversationSelection>(
     state.globalFilters.conversationSelection

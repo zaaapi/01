@@ -42,7 +42,7 @@ type EmpresaFormValues = z.infer<typeof empresaSchema>
 
 export default function PerfilClientePage() {
   const router = useRouter()
-  const { currentAuthUser, logout } = useAuth()
+  const { user, signOut } = useAuth()
   const { state, updateUser, updateTenant } = useData()
   const { toast } = useToast()
 
@@ -66,15 +66,15 @@ export default function PerfilClientePage() {
   })
 
   const tenant = useMemo(() => {
-    if (!currentAuthUser?.tenantId) return null
-    return state.tenants.find((t) => t.id === currentAuthUser.tenantId)
-  }, [state.tenants, currentAuthUser])
+    if (!user?.tenantId) return null
+    return state.tenants.find((t) => t.id === user.tenantId)
+  }, [state.tenants, user])
 
   useEffect(() => {
-    if (currentAuthUser) {
+    if (user) {
       perfilForm.reset({
-        name: currentAuthUser.fullName,
-        whatsapp: currentAuthUser.whatsappNumber || "",
+        name: user.fullName,
+        whatsapp: user.whatsappNumber || "",
       })
 
       if (tenant) {
@@ -85,7 +85,7 @@ export default function PerfilClientePage() {
         })
       }
     }
-  }, [currentAuthUser, tenant, perfilForm, empresaForm])
+  }, [user, tenant, perfilForm, empresaForm])
 
   // Atalhos de teclado
   useKeyboardShortcuts({
@@ -106,10 +106,10 @@ export default function PerfilClientePage() {
   }
 
   const handleSavePerfil = async (data: PerfilPessoalFormValues) => {
-    if (!currentAuthUser) return
+    if (!user) return
 
     try {
-      await updateUser(currentAuthUser.id, {
+      await updateUser(user.id, {
         fullName: data.name,
         whatsappNumber: data.whatsapp,
       })
@@ -148,16 +148,15 @@ export default function PerfilClientePage() {
     }
   }
 
-  const handleLogout = () => {
-    logout()
-    router.push("/logged-out")
+  const handleLogout = async () => {
+    await signOut()
   }
 
-  if (!currentAuthUser) {
+  if (!user) {
     return null
   }
 
-  const displayAvatarUrl = avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentAuthUser.fullName}`
+  const displayAvatarUrl = avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullName}`
 
   return (
     <PageContainer>
@@ -176,7 +175,7 @@ export default function PerfilClientePage() {
               <Avatar className="h-20 w-20">
                 <AvatarImage src={displayAvatarUrl} />
                 <AvatarFallback>
-                  {currentAuthUser.fullName
+                  {user.fullName
                     .split(" ")
                     .map((n: string) => n[0])
                     .join("")
@@ -207,7 +206,7 @@ export default function PerfilClientePage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" value={currentAuthUser.email} disabled />
+                  <Input id="email" type="email" value={user.email} disabled />
                 </div>
 
                 <FormField

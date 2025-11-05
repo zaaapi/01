@@ -18,6 +18,8 @@ import {
 } from "@/types"
 import { getLocalData, setLocalData } from "@/lib/local-storage"
 import { seedData } from "@/lib/seed-data"
+import { createSupabaseClient } from "@/db"
+import { FeatureModule } from "@/types"
 
 interface DataContextType {
   state: MockAppState
@@ -100,11 +102,70 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Carregar dados do localStorage na inicialização
+    // Carregar dados do localStorage e Supabase na inicialização
     const loadData = async () => {
       await simulateDelay()
-      const data = getLocalData()
-      setState(data)
+      const localData = getLocalData()
+      const supabase = createSupabaseClient()
+
+      // Buscar featureModules do Supabase
+      let featureModules: FeatureModule[] = localData.featureModules
+      try {
+        const { data: featureModulesData, error: featureModulesError } = await supabase
+          .from("feature_modules")
+          .select("*")
+          .order("name")
+
+        if (featureModulesData && !featureModulesError) {
+          featureModules = featureModulesData.map((fm) => ({
+            id: fm.id,
+            key: fm.key as FeatureModule["key"],
+            name: fm.name,
+            description: fm.description || "",
+            icon: fm.icon || "settings",
+          }))
+        } else if (featureModulesError) {
+          console.warn("Erro ao buscar featureModules do Supabase, usando dados mock:", featureModulesError)
+        }
+      } catch (error) {
+        console.warn("Erro ao buscar featureModules do Supabase, usando dados mock:", error)
+      }
+
+      // Buscar channelProviders do Supabase (se a tabela existir)
+      // Por enquanto, manteremos como mock se não existir
+      // Nota: channelProviders não está no MockAppState ainda
+      let channelProviders: any[] = []
+      try {
+        const { data: channelProvidersData, error: channelProvidersError } = await supabase
+          .from("channel_providers")
+          .select("*")
+          .order("name")
+
+        if (channelProvidersData && !channelProvidersError) {
+          channelProviders = channelProvidersData.map((cp) => ({
+            id: cp.id,
+            key: cp.key,
+            name: cp.name,
+            description: cp.description || "",
+            icon: cp.icon || "settings",
+            isActive: cp.is_active ?? true,
+          }))
+        } else if (channelProvidersError) {
+          // Se a tabela não existir, não é um erro crítico
+          console.debug("Tabela channel_providers não encontrada ou erro:", channelProvidersError)
+        }
+      } catch (error) {
+        console.debug("Erro ao buscar channelProviders do Supabase, usando dados mock:", error)
+      }
+
+      // Combinar dados: Supabase para featureModules, localStorage para o resto
+      const combinedState: MockAppState = {
+        ...localData,
+        featureModules,
+        // channelProviders será adicionado ao MockAppState quando necessário
+      }
+
+      setState(combinedState)
       setIsLoading(false)
     }
     loadData()

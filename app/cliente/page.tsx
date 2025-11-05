@@ -27,7 +27,7 @@ import dayjs from "dayjs"
 export default function ClienteDashboard() {
   const router = useRouter()
   const { state, isLoading, updateGlobalFilters } = useData()
-  const { currentAuthUser } = useAuth()
+  const { user } = useAuth()
   const [localPeriod, setLocalPeriod] = useState<GlobalFilterPeriod>(state.globalFilters.period)
   const [localConversationSelection, setLocalConversationSelection] = useState<GlobalFilterConversationSelection>(
     state.globalFilters.conversationSelection
@@ -41,7 +41,7 @@ export default function ClienteDashboard() {
   })
 
   // Filtrar dados apenas do tenant logado
-  const tenantId = currentAuthUser?.tenantId
+  const tenantId = user?.tenantId
   const tenantConversations = useMemo(() => {
     if (!tenantId) return []
     return state.conversations.filter((c) => c.tenantId === tenantId)
