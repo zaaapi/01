@@ -1,5 +1,7 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/shared/sidebar"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
@@ -8,9 +10,21 @@ export default function ClienteLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const [isCollapsed, setIsCollapsed] = useState(pathname === "/cliente/live-chat")
+
+  // Atualizar estado quando mudar de rota
+  useEffect(() => {
+    setIsCollapsed(pathname === "/cliente/live-chat")
+  }, [pathname])
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar platform="cliente" />
+      <Sidebar 
+        platform="cliente" 
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      />
       <div className="flex flex-1 flex-col">
         {/* Top Bar */}
         <header className="flex h-16 items-center justify-between border-b bg-card px-6">
@@ -30,4 +44,3 @@ export default function ClienteLayout({
     </div>
   )
 }
-

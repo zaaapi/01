@@ -2,6 +2,9 @@ import type { Metadata } from "next"
 import { Montserrat } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/lib/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/lib/contexts/auth-context"
+import { DataProvider } from "@/lib/contexts/data-provider"
 
 const montserrat = Montserrat({ 
   subsets: ["latin"],
@@ -28,7 +31,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>
+            <DataProvider>
+              {children}
+              <Toaster />
+            </DataProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

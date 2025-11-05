@@ -1,8 +1,9 @@
-"use client";
+"use client"
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -18,39 +19,35 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@/components/ui/form"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Empresa } from "./mock-data";
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Tenant } from "@/types"
+import { useData } from "@/lib/contexts/data-provider"
 
 const empresaSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
-  neurocore: z.string().min(1, "Selecione um NeuroCore"),
-});
+  neurocoreId: z.string().min(1, "Selecione um NeuroCore"),
+  cnpj: z.string().min(14, "CNPJ inválido"),
+  phone: z.string().min(10, "Telefone inválido"),
+  plan: z.string().min(1, "Selecione um plano"),
+})
 
-type FormValues = z.infer<typeof empresaSchema>;
+type FormValues = z.infer<typeof empresaSchema>
 
 interface AddEditEmpresaModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  empresa?: Empresa | null;
-  onSave: (data: FormValues) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  empresa?: Tenant | null
+  onSave: (data: FormValues & { plan: string }) => void
 }
-
-const NEUROCORES = [
-  "NeuroCore Varejo",
-  "NeuroCore Saúde",
-  "NeuroCore Serviços",
-  "NeuroCore Educação",
-  "NeuroCore Financeiro",
-];
 
 export function AddEditEmpresaModal({
   open,
@@ -58,21 +55,47 @@ export function AddEditEmpresaModal({
   empresa,
   onSave,
 }: AddEditEmpresaModalProps) {
-  const isEditMode = !!empresa;
+  const { state } = useData()
+  const isEditMode = !!empresa
 
   const form = useForm<FormValues>({
     resolver: zodResolver(empresaSchema),
     defaultValues: {
-      name: empresa?.name || "",
-      neurocore: empresa?.neurocore || "",
+      name: "",
+      neurocoreId: "",
+      cnpj: "",
+      phone: "",
+      plan: "",
     },
-  });
+  })
+
+  useEffect(() => {
+    if (empresa) {
+      form.reset({
+        name: empresa.name,
+        neurocoreId: empresa.neurocoreId,
+        cnpj: empresa.cnpj,
+        phone: empresa.phone,
+        plan: empresa.plan,
+      })
+    } else {
+      form.reset({
+        name: "",
+        neurocoreId: "",
+        cnpj: "",
+        phone: "",
+        plan: "",
+      })
+    }
+  }, [empresa, form])
 
   const onSubmit = (data: FormValues) => {
-    onSave(data);
-    form.reset();
-    onOpenChange(false);
-  };
+    onSave(data)
+    form.reset()
+    onOpenChange(false)
+  }
+
+  const neurocores = state.neurocores.filter((nc) => nc.isActive)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,22 +129,75 @@ export function AddEditEmpresaModal({
 
             <FormField
               control={form.control}
-              name="neurocore"
+              name="neurocoreId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>NeuroCore Associado</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um NeuroCore" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {NEUROCORES.map((neurocore) => (
-                        <SelectItem key={neurocore} value={neurocore}>
-                          {neurocore}
+                      {neurocores.map((neurocore) => (
+                        <SelectItem key={neurocore.id} value={neurocore.id}>
+                          {neurocore.name} ({neurocore.niche})
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="cnpj"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CNPJ</FormLabel>
+                  <FormControl>
+                    <Input placeholder="00.000.000/0001-00" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input placeholder="+55 11 98765-4321" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="plan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plano</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um plano" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Starter">Starter</SelectItem>
+                      <SelectItem value="Basic">Basic</SelectItem>
+                      <SelectItem value="Business">Business</SelectItem>
+                      <SelectItem value="Premium">Premium</SelectItem>
+                      <SelectItem value="Enterprise">Enterprise</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -134,8 +210,8 @@ export function AddEditEmpresaModal({
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  form.reset();
-                  onOpenChange(false);
+                  form.reset()
+                  onOpenChange(false)
                 }}
               >
                 Cancelar
@@ -148,6 +224,5 @@ export function AddEditEmpresaModal({
         </Form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
-

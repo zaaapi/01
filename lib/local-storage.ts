@@ -1,11 +1,11 @@
 "use client"
 
-import { AppState } from "@/types"
+import { MockAppState } from "@/types"
 import { seedData } from "./seed-data"
 
 const STORAGE_KEY = "livia_data_v1"
 
-export function getLocalData(): AppState {
+export function getLocalData(): MockAppState {
   if (typeof window === "undefined") {
     return seedData
   }
@@ -16,14 +16,14 @@ export function getLocalData(): AppState {
       setLocalData(seedData)
       return seedData
     }
-    return JSON.parse(data) as AppState
+    return JSON.parse(data) as MockAppState
   } catch (error) {
     console.error("Erro ao carregar dados locais:", error)
     return seedData
   }
 }
 
-export function setLocalData(data: AppState): void {
+export function setLocalData(data: MockAppState): void {
   if (typeof window === "undefined") {
     return
   }
@@ -54,4 +54,5 @@ export function clearLocalData(): void {
     console.error("Erro ao limpar dados locais:", error)
   }
 }
+
 

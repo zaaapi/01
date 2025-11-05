@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Sidebar } from "@/components/shared/sidebar"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
@@ -8,9 +9,15 @@ export default function SuperAdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar platform="super-admin" />
+      <Sidebar 
+        platform="super-admin" 
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      />
       <div className="flex flex-1 flex-col">
         {/* Top Bar */}
         <header className="flex h-16 items-center justify-between border-b bg-card px-6">
@@ -30,4 +37,3 @@ export default function SuperAdminLayout({
     </div>
   )
 }
-

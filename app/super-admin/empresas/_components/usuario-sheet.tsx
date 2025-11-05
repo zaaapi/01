@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import {
   Sheet,
   SheetContent,
@@ -10,7 +10,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/components/ui/sheet"
 import {
   Form,
   FormControl,
@@ -19,31 +19,42 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Usuario, MODULOS_DISPONIVEIS } from "./mock-data";
-import { ModuloCard } from "./modulo-card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState, useEffect } from "react";
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { useData } from "@/lib/contexts/data-provider"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useState, useEffect } from "react"
+import { User, FeatureModuleKey } from "@/types"
+import { MessageSquare, BookOpen, Palette, BarChart3, Zap, Plug, LucideIcon } from "lucide-react"
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  MessageSquare,
+  BookOpen,
+  Palette,
+  BarChart3,
+  Zap,
+  Plug,
+}
 
 const usuarioSchema = z.object({
-  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  fullName: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("Email inválido"),
-  whatsapp: z.string().min(10, "WhatsApp inválido"),
+  whatsappNumber: z.string().min(10, "WhatsApp inválido"),
   isActive: z.boolean(),
-});
+})
 
-type FormValues = z.infer<typeof usuarioSchema>;
+type FormValues = z.infer<typeof usuarioSchema>
 
 interface UsuarioSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  usuario?: Usuario | null;
-  mode: "view" | "edit" | "add";
-  onSave: (data: FormValues & { modulosAtribuidos: string[] }) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  usuario?: User | null
+  mode: "view" | "edit" | "add"
+  tenantId: string
+  onSave: (data: FormValues & { modules: FeatureModuleKey[] }) => void
 }
 
 export function UsuarioSheet({
@@ -51,77 +62,81 @@ export function UsuarioSheet({
   onOpenChange,
   usuario,
   mode,
+  tenantId,
   onSave,
 }: UsuarioSheetProps) {
-  const [modulosAtivos, setModulosAtivos] = useState<string[]>(
-    usuario?.modulosAtribuidos || []
-  );
+  const { state } = useData()
+  const [modulosAtivos, setModulosAtivos] = useState<FeatureModuleKey[]>(
+    usuario?.modules || []
+  )
 
-  const isViewMode = mode === "view";
-  const isEditMode = mode === "edit";
-  const isAddMode = mode === "add";
+  const isViewMode = mode === "view"
+  const isEditMode = mode === "edit"
+  const isAddMode = mode === "add"
 
   const form = useForm<FormValues>({
     resolver: zodResolver(usuarioSchema),
     defaultValues: {
-      nome: usuario?.nome || "",
+      fullName: usuario?.fullName || "",
       email: usuario?.email || "",
-      whatsapp: usuario?.whatsapp || "",
+      whatsappNumber: usuario?.whatsappNumber || "",
       isActive: usuario?.isActive ?? true,
     },
-  });
+  })
 
   useEffect(() => {
     if (usuario) {
       form.reset({
-        nome: usuario.nome,
+        fullName: usuario.fullName,
         email: usuario.email,
-        whatsapp: usuario.whatsapp,
+        whatsappNumber: usuario.whatsappNumber,
         isActive: usuario.isActive,
-      });
-      setModulosAtivos(usuario.modulosAtribuidos);
+      })
+      setModulosAtivos(usuario.modules)
     } else {
       form.reset({
-        nome: "",
+        fullName: "",
         email: "",
-        whatsapp: "",
+        whatsappNumber: "",
         isActive: true,
-      });
-      setModulosAtivos([]);
+      })
+      setModulosAtivos([])
     }
-  }, [usuario, form]);
+  }, [usuario, form])
 
-  const handleToggleModulo = (moduloId: string, isActive: boolean) => {
-    if (isViewMode) return;
+  const handleToggleModulo = (moduloKey: FeatureModuleKey, isActive: boolean) => {
+    if (isViewMode) return
     
     if (isActive) {
-      setModulosAtivos([...modulosAtivos, moduloId]);
+      setModulosAtivos([...modulosAtivos, moduloKey])
     } else {
-      setModulosAtivos(modulosAtivos.filter((id) => id !== moduloId));
+      setModulosAtivos(modulosAtivos.filter((key) => key !== moduloKey))
     }
-  };
+  }
 
   const onSubmit = (data: FormValues) => {
     onSave({
       ...data,
-      modulosAtribuidos: modulosAtivos,
-    });
-    form.reset();
-    setModulosAtivos([]);
-    onOpenChange(false);
-  };
+      modules: modulosAtivos,
+    })
+    form.reset()
+    setModulosAtivos([])
+    onOpenChange(false)
+  }
 
   const getTitle = () => {
-    if (isViewMode) return "Visualizar Usuário";
-    if (isEditMode) return "Editar Usuário";
-    return "Adicionar Novo Usuário";
-  };
+    if (isViewMode) return "Visualizar Usuário"
+    if (isEditMode) return "Editar Usuário"
+    return "Adicionar Novo Usuário"
+  }
 
   const getDescription = () => {
-    if (isViewMode) return "Detalhes do usuário e módulos atribuídos.";
-    if (isEditMode) return "Atualize as informações do usuário.";
-    return "Preencha os dados para criar um novo usuário.";
-  };
+    if (isViewMode) return "Detalhes do usuário e módulos atribuídos."
+    if (isEditMode) return "Atualize as informações do usuário."
+    return "Preencha os dados para criar um novo usuário."
+  }
+
+  const availableModules = state.featureModules
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -136,7 +151,7 @@ export function UsuarioSheet({
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
               <FormField
                 control={form.control}
-                name="nome"
+                name="fullName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome Completo</FormLabel>
@@ -173,7 +188,7 @@ export function UsuarioSheet({
 
               <FormField
                 control={form.control}
-                name="whatsapp"
+                name="whatsappNumber"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Número de WhatsApp</FormLabel>
@@ -222,17 +237,32 @@ export function UsuarioSheet({
                 </div>
 
                 <div className="grid gap-3">
-                  {MODULOS_DISPONIVEIS.map((modulo) => (
-                    <ModuloCard
-                      key={modulo.id}
-                      id={modulo.id}
-                      nome={modulo.nome}
-                      descricao={modulo.descricao}
-                      icon={modulo.icon}
-                      isActive={modulosAtivos.includes(modulo.id)}
-                      onToggle={handleToggleModulo}
-                    />
-                  ))}
+                  {availableModules.map((modulo) => {
+                    const Icon = ICON_MAP[modulo.icon] || MessageSquare
+                    return (
+                      <div key={modulo.key} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`rounded-lg p-2 ${modulosAtivos.includes(modulo.key) ? "bg-primary/10" : "bg-muted"}`}>
+                              <Icon className={`h-5 w-5 ${modulosAtivos.includes(modulo.key) ? "text-primary" : "text-muted-foreground"}`} />
+                            </div>
+                            <div>
+                              <Label className="text-base font-semibold">{modulo.name}</Label>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {modulo.description}
+                              </p>
+                            </div>
+                          </div>
+                          {!isViewMode && (
+                            <Switch
+                              checked={modulosAtivos.includes(modulo.key)}
+                              onCheckedChange={(checked) => handleToggleModulo(modulo.key, checked)}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </form>
@@ -245,9 +275,9 @@ export function UsuarioSheet({
               type="button"
               variant="outline"
               onClick={() => {
-                form.reset();
-                setModulosAtivos([]);
-                onOpenChange(false);
+                form.reset()
+                setModulosAtivos([])
+                onOpenChange(false)
               }}
             >
               Cancelar
@@ -259,6 +289,5 @@ export function UsuarioSheet({
         )}
       </SheetContent>
     </Sheet>
-  );
+  )
 }
-

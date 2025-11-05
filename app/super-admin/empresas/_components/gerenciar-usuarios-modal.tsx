@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useState, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,19 +25,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Eye, Pencil, Trash2, Plus } from "lucide-react";
-import { Usuario, mockUsuarios, MODULOS_DISPONIVEIS } from "./mock-data";
-import { UsuarioSheet } from "./usuario-sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Eye, Pencil, Trash2, Plus, User } from "lucide-react"
+import { useData } from "@/lib/contexts/data-provider"
+import { useToast } from "@/hooks/use-toast"
+import { User as UserType, UserRole, FeatureModuleKey } from "@/types"
+import { UsuarioSheet } from "./usuario-sheet"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { EmptyState } from "@/components/shared/empty-state"
 
 interface GerenciarUsuariosModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  empresaId: string;
-  empresaNome: string;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  empresaId: string
+  empresaNome: string
 }
 
 export function GerenciarUsuariosModal({
@@ -46,71 +49,108 @@ export function GerenciarUsuariosModal({
   empresaId,
   empresaNome,
 }: GerenciarUsuariosModalProps) {
-  const [usuarios, setUsuarios] = useState<Usuario[]>(
-    mockUsuarios.filter((u) => u.empresaId === empresaId)
-  );
+  const { state, createUser, updateUser, deleteUser } = useData()
+  const { toast } = useToast()
+
+  const usuarios = useMemo(() => {
+    return state.users.filter((u) => u.tenantId === empresaId)
+  }, [state.users, empresaId])
 
   const [sheetState, setSheetState] = useState<{
-    open: boolean;
-    mode: "view" | "edit" | "add";
-    usuario: Usuario | null;
+    open: boolean
+    mode: "view" | "edit" | "add"
+    usuario: UserType | null
   }>({
     open: false,
     mode: "view",
     usuario: null,
-  });
+  })
 
   const [deleteDialog, setDeleteDialog] = useState<{
-    open: boolean;
-    usuario: Usuario | null;
+    open: boolean
+    usuario: UserType | null
   }>({
     open: false,
     usuario: null,
-  });
+  })
 
   const handleOpenSheet = (
     mode: "view" | "edit" | "add",
-    usuario: Usuario | null = null
+    usuario: UserType | null = null
   ) => {
-    setSheetState({ open: true, mode, usuario });
-  };
+    setSheetState({ open: true, mode, usuario })
+  }
 
-  const handleSaveUsuario = (
-    data: {
-      nome: string;
-      email: string;
-      whatsapp: string;
-      isActive: boolean;
-      modulosAtribuidos: string[];
+  const handleSaveUsuario = async (data: {
+    fullName: string
+    email: string
+    whatsappNumber: string
+    isActive: boolean
+    modules: FeatureModuleKey[]
+  }) => {
+    try {
+      if (sheetState.mode === "add") {
+        await createUser({
+          tenantId: empresaId,
+          fullName: data.fullName,
+          email: data.email,
+          whatsappNumber: data.whatsappNumber,
+          role: UserRole.USUARIO_CLIENTE,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.fullName}`,
+          modules: data.modules,
+          isActive: data.isActive,
+          lastSignInAt: null,
+        })
+        toast({
+          title: "Usuário criado",
+          description: "O usuário foi criado com sucesso.",
+        })
+      } else if (sheetState.mode === "edit" && sheetState.usuario) {
+        await updateUser(sheetState.usuario.id, {
+          fullName: data.fullName,
+          email: data.email,
+          whatsappNumber: data.whatsappNumber,
+          modules: data.modules,
+          isActive: data.isActive,
+        })
+        toast({
+          title: "Usuário atualizado",
+          description: "O usuário foi atualizado com sucesso.",
+        })
+      }
+      setSheetState({ open: false, mode: "view", usuario: null })
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o usuário.",
+        variant: "destructive",
+      })
     }
-  ) => {
-    if (sheetState.mode === "add") {
-      const newUsuario: Usuario = {
-        id: `user-${Date.now()}`,
-        empresaId,
-        ...data,
-      };
-      setUsuarios([...usuarios, newUsuario]);
-    } else if (sheetState.mode === "edit" && sheetState.usuario) {
-      setUsuarios(
-        usuarios.map((u) =>
-          u.id === sheetState.usuario?.id ? { ...u, ...data } : u
-        )
-      );
-    }
-  };
+  }
 
-  const handleDeleteUsuario = () => {
+  const handleDeleteUsuario = async () => {
     if (deleteDialog.usuario) {
-      setUsuarios(usuarios.filter((u) => u.id !== deleteDialog.usuario?.id));
-      setDeleteDialog({ open: false, usuario: null });
+      try {
+        await deleteUser(deleteDialog.usuario.id)
+        toast({
+          title: "Usuário excluído",
+          description: "O usuário foi excluído com sucesso.",
+        })
+        setDeleteDialog({ open: false, usuario: null })
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o usuário.",
+          variant: "destructive",
+        })
+      }
     }
-  };
+  }
 
-  const getModuloNome = (moduloId: string) => {
-    const modulo = MODULOS_DISPONIVEIS.find((m) => m.id === moduloId);
-    return modulo?.nome || moduloId;
-  };
+  const getModuloNome = (moduloKey: string) => {
+    const modulo = state.featureModules.find((m) => m.key === moduloKey)
+    return modulo?.name || moduloKey
+  }
 
   return (
     <>
@@ -135,33 +175,33 @@ export function GerenciarUsuariosModal({
               </Button>
             </div>
 
-            <ScrollArea className="h-[400px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>E-mail</TableHead>
-                    <TableHead>WhatsApp</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Módulos Atribuídos</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {usuarios.length === 0 ? (
+            {usuarios.length === 0 ? (
+              <EmptyState
+                icon={User}
+                title="Nenhum usuário cadastrado"
+                description="Adicione usuários para esta empresa"
+                actionLabel="Adicionar Usuário"
+                onAction={() => handleOpenSheet("add")}
+              />
+            ) : (
+              <ScrollArea className="h-[400px] rounded-md border">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12">
-                        <p className="text-muted-foreground">
-                          Nenhum usuário cadastrado nesta empresa.
-                        </p>
-                      </TableCell>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>E-mail</TableHead>
+                      <TableHead>WhatsApp</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Módulos Atribuídos</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ) : (
-                    usuarios.map((usuario) => (
+                  </TableHeader>
+                  <TableBody>
+                    {usuarios.map((usuario) => (
                       <TableRow key={usuario.id}>
-                        <TableCell className="font-medium">{usuario.nome}</TableCell>
+                        <TableCell className="font-medium">{usuario.fullName}</TableCell>
                         <TableCell>{usuario.email}</TableCell>
-                        <TableCell>{usuario.whatsapp}</TableCell>
+                        <TableCell>{usuario.whatsappNumber}</TableCell>
                         <TableCell>
                           {usuario.isActive ? (
                             <Badge variant="default">Ativo</Badge>
@@ -171,14 +211,14 @@ export function GerenciarUsuariosModal({
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {usuario.modulosAtribuidos.slice(0, 2).map((moduloId) => (
-                              <Badge key={moduloId} variant="outline" className="text-xs">
-                                {getModuloNome(moduloId)}
+                            {usuario.modules.slice(0, 2).map((moduloKey) => (
+                              <Badge key={moduloKey} variant="outline" className="text-xs">
+                                {getModuloNome(moduloKey)}
                               </Badge>
                             ))}
-                            {usuario.modulosAtribuidos.length > 2 && (
+                            {usuario.modules.length > 2 && (
                               <Badge variant="outline" className="text-xs">
-                                +{usuario.modulosAtribuidos.length - 2}
+                                +{usuario.modules.length - 2}
                               </Badge>
                             )}
                           </div>
@@ -202,31 +242,28 @@ export function GerenciarUsuariosModal({
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() =>
-                                setDeleteDialog({ open: true, usuario })
-                              }
+                              onClick={() => setDeleteDialog({ open: true, usuario })}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
       <UsuarioSheet
         open={sheetState.open}
-        onOpenChange={(open) =>
-          setSheetState({ ...sheetState, open })
-        }
+        onOpenChange={(open) => setSheetState({ ...sheetState, open })}
         usuario={sheetState.usuario}
         mode={sheetState.mode}
+        tenantId={empresaId}
         onSave={handleSaveUsuario}
       />
 
@@ -239,7 +276,7 @@ export function GerenciarUsuariosModal({
             <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir o usuário{" "}
-              <strong>{deleteDialog.usuario?.nome}</strong>? Esta ação não pode ser
+              <strong>{deleteDialog.usuario?.fullName}</strong>? Esta ação não pode ser
               desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -255,6 +292,5 @@ export function GerenciarUsuariosModal({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  );
+  )
 }
-
