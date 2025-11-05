@@ -43,15 +43,15 @@ Abra o arquivo `.env.local` e adicione:
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon-key-aqui
 
-# N8N - ADICIONE ESTAS NOVAS LINHAS
-NEXT_PUBLIC_N8N_BASE_URL=https://seu-n8n-instance.com/webhook
+# N8N - Ligeira Telecom (PRODUÇÃO)
+NEXT_PUBLIC_N8N_BASE_URL=https://acesse.ligeiratelecom.com.br/webhook
 N8N_JWT_SECRET=NdnpQeMzrlvi1TnluSJwSpibok45FfT4
 ```
 
 **⚠️ IMPORTANTE:**
 
-- Substitua `https://seu-n8n-instance.com/webhook` pela URL real do seu N8N
-- A senha `N8N_JWT_SECRET` já está correta (você forneceu): `NdnpQeMzrlvi1TnluSJwSpibok45FfT4`
+- A URL do N8N é: `https://acesse.ligeiratelecom.com.br/webhook`
+- A senha `N8N_JWT_SECRET` é: `NdnpQeMzrlvi1TnluSJwSpibok45FfT4`
 - **NUNCA commite o arquivo .env.local** (ele já está no .gitignore)
 
 ### Passo 3: Reiniciar o servidor
@@ -147,49 +147,59 @@ Abra o **Console do Navegador** (F12):
 
 ## 📡 Endpoints N8N Disponíveis
 
-Todos os endpoints são **POST** e usam autenticação JWT:
+Todos os endpoints são **POST** e usam autenticação JWT (HS256).
+
+**Base URL:** `https://acesse.ligeiratelecom.com.br/webhook`
 
 ### 1. Enviar Mensagem WhatsApp
 
 ```
-POST /send_whatsapp_message
+POST https://acesse.ligeiratelecom.com.br/webhook/send_whatsapp_message
 Body: { tenantId, contactId, conversationId, message }
 ```
 
 ### 2. Pausar IA Conversa
 
 ```
-POST /pause_ia_conversation
+POST https://acesse.ligeiratelecom.com.br/webhook/pause_ia_conversation
 Body: { tenantId, conversationId }
 ```
 
 ### 3. Retomar IA Conversa
 
 ```
-POST /resume_ia_conversation
+POST https://acesse.ligeiratelecom.com.br/webhook/resume_ia_conversation
 Body: { tenantId, conversationId }
 ```
 
 ### 4. Gerenciar Synapse
 
 ```
-POST /manage_synapse
+POST https://acesse.ligeiratelecom.com.br/webhook/manage_synapse
 Body: { action, tenantId, synapseId (opcional), data {...} }
 ```
 
 ### 5. Treinar NeuroCore
 
 ```
-POST /train_neurocore
+POST https://acesse.ligeiratelecom.com.br/webhook/train_neurocore
 Body: { tenantId, question }
 ```
 
 ### 6. Encerrar Conversa
 
 ```
-POST /end_conversation
+POST https://acesse.ligeiratelecom.com.br/webhook/end_conversation
 Body: { tenantId, conversationId, contactId }
 ```
+
+### Autenticação JWT
+
+- **Algoritmo:** HS256
+- **Keytype:** passphrase
+- **Secret:** NdnpQeMzrlvi1TnluSJwSpibok45FfT4
+- **Expiração:** 1 hora
+- **Header:** `Authorization: Bearer <token>`
 
 ## 🔐 Segurança
 
