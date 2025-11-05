@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -11,48 +12,126 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useData } from "@/lib/contexts/data-provider"
-import { Feedback, FeedbackType, FeedbackStatus, MessageSenderType } from "@/types"
+import { Feedback, FeedbackType, FeedbackStatus, MessageSenderType, Message } from "@/types"
 import { formatDateTime } from "@/lib/formatters"
-import { ThumbsUp, ThumbsDown, Bot, User, MessageSquare } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Bot, User, MessageSquare, Loader2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/hooks/use-toast"
 
 interface FeedbackDetailsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   feedback: Feedback | null
+  onSave?: () => void
 }
 
 export function FeedbackDetailsModal({
   open,
   onOpenChange,
   feedback,
+  onSave,
 }: FeedbackDetailsModalProps) {
-  const { state } = useData()
+  const { fetchConversationMessages, updateFeedback } = useData()
+  const { toast } = useToast()
+
+  const [conversationMessages, setConversationMessages] = useState<Message[]>([])
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Estados editáveis
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus>(
+    feedback?.feedbackStatus || FeedbackStatus.EM_ABERTO
+  )
+  const [superAdminComment, setSuperAdminComment] = useState<string>(
+    feedback?.superAdminComment || ""
+  )
+
+  // Atualizar estados quando feedback mudar
+  useEffect(() => {
+    if (feedback) {
+      setFeedbackStatus(feedback.feedbackStatus)
+      setSuperAdminComment(feedback.superAdminComment || "")
+    }
+  }, [feedback])
+
+  // Buscar mensagens da conversa
+  useEffect(() => {
+    if (open && feedback?.conversationId) {
+      const loadMessages = async () => {
+        setIsLoadingMessages(true)
+        try {
+          const messages = await fetchConversationMessages(feedback.conversationId)
+          setConversationMessages(messages)
+        } catch (error) {
+          console.error("Erro ao carregar mensagens da conversa:", error)
+          toast({
+            title: "Erro ao carregar mensagens",
+            description: "Não foi possível carregar o histórico da conversa.",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLoadingMessages(false)
+        }
+      }
+      loadMessages()
+    }
+  }, [open, feedback?.conversationId, fetchConversationMessages, toast])
 
   if (!feedback) return null
 
-  // Buscar dados relacionados
-  const message = state.messages.find((m) => m.id === feedback.messageId)
-  const conversation = message
-    ? state.conversations.find((c) => c.id === message.conversationId)
-    : null
-  const contact = conversation
-    ? state.contacts.find((c) => c.id === conversation.contactId)
-    : null
-  const tenant = conversation
-    ? state.tenants.find((t) => t.id === conversation.tenantId)
-    : null
-  const user = feedback.userId
-    ? state.users.find((u) => u.id === feedback.userId)
-    : null
+  // Acessar dados relacionados que vêm do JOIN do Supabase
+  const feedbackData = feedback as any
+  const message = feedbackData.message
+  const tenant = feedbackData.tenant
+  const user = feedbackData.user
+  const conversation = feedbackData.conversation
 
-  // Buscar todas as mensagens da conversa
-  const conversationMessages = conversation
-    ? state.messages
-        .filter((m) => m.conversationId === conversation.id)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    : []
+  const handleSave = async () => {
+    if (!feedback) return
+
+    setIsSaving(true)
+    try {
+      await updateFeedback(feedback.id, {
+        feedbackStatus,
+        superAdminComment,
+      })
+
+      toast({
+        title: "Feedback atualizado",
+        description: "O status e comentário foram salvos com sucesso.",
+      })
+
+      // Chamar callback para recarregar feedbacks
+      if (onSave) {
+        onSave()
+      }
+
+      onOpenChange(false)
+    } catch (error) {
+      console.error("Erro ao salvar feedback:", error)
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const hasChanges =
+    feedbackStatus !== feedback.feedbackStatus ||
+    superAdminComment !== (feedback.superAdminComment || "")
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,21 +166,6 @@ export function FeedbackDetailsModal({
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge
-                    variant={
-                      feedback.feedbackStatus === FeedbackStatus.EM_ABERTO
-                        ? "destructive"
-                        : feedback.feedbackStatus === FeedbackStatus.SENDO_TRATADO
-                        ? "secondary"
-                        : "default"
-                    }
-                    className="mt-1"
-                  >
-                    {feedback.feedbackStatus}
-                  </Badge>
-                </div>
-                <div>
                   <p className="text-sm text-muted-foreground">Data</p>
                   <p className="font-medium mt-1">{formatDateTime(feedback.createdAt)}</p>
                 </div>
@@ -111,19 +175,55 @@ export function FeedbackDetailsModal({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Usuário</p>
-                  <p className="font-medium mt-1">{user?.fullName || "N/A"}</p>
+                  <p className="font-medium mt-1">{user?.full_name || "N/A"}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Contato</p>
-                  <p className="font-medium mt-1">{contact?.name || "N/A"}</p>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground">ID da Conversa</p>
+                  <p className="font-medium mt-1 font-mono text-xs">{feedback.conversationId}</p>
                 </div>
               </div>
               {feedback.feedbackText && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Comentário</p>
+                  <p className="text-sm text-muted-foreground">Comentário do Usuário</p>
                   <p className="mt-1 p-3 bg-muted rounded-md">{feedback.feedbackText}</p>
                 </div>
               )}
+            </div>
+
+            <Separator />
+
+            {/* Campos Editáveis: Status e Comentário do Super Admin */}
+            <div className="space-y-4">
+              <h3 className="font-semibold">Gestão do Feedback</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="status">Status do Feedback</Label>
+                <Select value={feedbackStatus} onValueChange={(value) => setFeedbackStatus(value as FeedbackStatus)}>
+                  <SelectTrigger id="status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={FeedbackStatus.EM_ABERTO}>Em Aberto</SelectItem>
+                    <SelectItem value={FeedbackStatus.SENDO_TRATADO}>Sendo Tratado</SelectItem>
+                    <SelectItem value={FeedbackStatus.ENCERRADO}>Encerrado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="comment">Comentário do Super Admin</Label>
+                <Textarea
+                  id="comment"
+                  placeholder="Adicione um comentário sobre este feedback..."
+                  value={superAdminComment}
+                  onChange={(e) => setSuperAdminComment(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use este campo para documentar ações tomadas ou observações sobre o feedback.
+                </p>
+              </div>
             </div>
 
             <Separator />
@@ -149,9 +249,15 @@ export function FeedbackDetailsModal({
             <Separator />
 
             {/* Histórico da Conversa */}
-            {conversationMessages.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold">Histórico da Conversa</h3>
+            <div className="space-y-3">
+              <h3 className="font-semibold">Histórico da Conversa</h3>
+              
+              {isLoadingMessages ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Carregando mensagens...</span>
+                </div>
+              ) : conversationMessages.length > 0 ? (
                 <div className="space-y-3">
                   {conversationMessages.map((msg) => {
                     const isIA = msg.senderType === MessageSenderType.IA
@@ -191,7 +297,7 @@ export function FeedbackDetailsModal({
                               </p>
                               {msg.id === feedback.messageId && (
                                 <Badge variant="outline" className="text-xs">
-                                  Feedback dado
+                                  Feedback dado aqui
                                 </Badge>
                               )}
                             </div>
@@ -215,15 +321,43 @@ export function FeedbackDetailsModal({
                     )
                   })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma mensagem encontrada para esta conversa.</p>
+                </div>
+              )}
+            </div>
           </div>
         </ScrollArea>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
+        <DialogFooter className="flex items-center justify-between">
+          <div className="flex-1">
+            {hasChanges && (
+              <p className="text-xs text-muted-foreground">
+                Você tem alterações não salvas
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Alterações"
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

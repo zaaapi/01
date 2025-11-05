@@ -7,6 +7,10 @@ import {
   User,
   NeuroCore,
   Agent,
+  AgentInstruction,
+  AgentLimitation,
+  AgentConversationRoteiro,
+  AgentOtherInstruction,
   Contact,
   Conversation,
   Message,
@@ -44,12 +48,14 @@ interface DataContextType {
   updateUserProfile: (userId: string, data: Partial<User>) => Promise<void>
   updateTenantProfile: (tenantId: string, data: Partial<Tenant>) => Promise<void>
   
-  // NeuroCores
+  // NeuroCores - Fetch Functions (Task 7)
+  fetchNeurocores: () => Promise<NeuroCore[]>
   createNeuroCore: (neurocore: Omit<NeuroCore, "id" | "createdAt">) => Promise<void>
   updateNeuroCore: (id: string, updates: Partial<NeuroCore>) => Promise<void>
   deleteNeuroCore: (id: string) => Promise<void>
   
-  // Agents
+  // Agents - Fetch Functions (Task 7)
+  fetchAgents: () => Promise<Agent[]>
   createAgent: (agent: Omit<Agent, "id" | "createdAt">) => Promise<void>
   updateAgent: (id: string, updates: Partial<Agent>) => Promise<void>
   deleteAgent: (id: string) => Promise<void>
@@ -79,7 +85,9 @@ interface DataContextType {
   updateSynapse: (id: string, updates: Partial<Synapse>) => Promise<void>
   deleteSynapse: (id: string) => Promise<void>
   
-  // Feedbacks
+  // Feedbacks - Fetch Functions (Task 9)
+  fetchFeedbacks: () => Promise<Feedback[]>
+  fetchConversationMessages: (conversationId: string) => Promise<Message[]>
   createFeedback: (feedback: Omit<Feedback, "id" | "createdAt">) => Promise<void>
   updateFeedback: (id: string, updates: Partial<Feedback>) => Promise<void>
   deleteFeedback: (id: string) => Promise<void>
@@ -94,6 +102,32 @@ interface DataContextType {
   
   // Reset data
   resetData: () => Promise<void>
+  
+  // Dashboard - Fetch Functions (Task 10)
+  fetchDashboardKpis: (filters: { period: string; conversationSelection: string }) => Promise<{
+    activeTenants: number
+    totalTenants: number
+    conversationsWithIA: number
+    pausedConversations: number
+  }>
+  fetchConversationsByHour: (filters: { period: string; conversationSelection: string }) => Promise<{
+    hora: string
+    conversas: number
+  }[]>
+  fetchConversationKeywords: (filters: { period: string; conversationSelection: string }) => Promise<{
+    word: string
+    count: number
+  }[]>
+  fetchTenantListWithConversationCounts: (filters: { period: string; conversationSelection: string }) => Promise<Array<{
+    id: string
+    name: string
+    neurocoreName: string
+    userCount: number
+    openConversations: number
+    pausedConversations: number
+    closedConversations: number
+    isActive: boolean
+  }>>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -538,18 +572,148 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [deleteEntity])
 
-  // NeuroCores
+  // NeuroCores - Fetch Functions (Task 7)
+  const fetchNeurocores = useCallback(async (): Promise<NeuroCore[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("neurocores")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar neurocores:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo NeuroCore
+      return data.map((nc) => ({
+        id: nc.id,
+        name: nc.name,
+        description: nc.description || "",
+        niche: nc.niche || "",
+        apiUrl: nc.api_url,
+        apiSecret: nc.api_secret,
+        isActive: nc.is_active ?? true,
+        associatedAgents: (nc.associated_agents || []) as string[],
+        createdAt: nc.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar neurocores:", error)
+      return []
+    }
+  }, [])
+
   const createNeuroCore = useCallback(async (neurocore: Omit<NeuroCore, "id" | "createdAt">) => {
-    await createEntity({ ...neurocore, createdAt: new Date().toISOString() }, "neurocores")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para inserção no Supabase
+      const insertData = {
+        name: neurocore.name,
+        description: neurocore.description,
+        niche: neurocore.niche,
+        api_url: neurocore.apiUrl,
+        api_secret: neurocore.apiSecret,
+        is_active: neurocore.isActive ?? true,
+        associated_agents: neurocore.associatedAgents || [],
+      }
+
+      const { error } = await supabase.from("neurocores").insert(insertData)
+
+      if (error) {
+        throw new Error(`Erro ao criar neurocore: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await createEntity({ ...neurocore, createdAt: new Date().toISOString() }, "neurocores")
+    } catch (error) {
+      console.error("Erro ao criar neurocore:", error)
+      throw error
+    }
   }, [createEntity])
 
   const updateNeuroCore = useCallback(async (id: string, updates: Partial<NeuroCore>) => {
-    await updateEntity(id, updates, "neurocores")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.description !== undefined) updateData.description = updates.description
+      if (updates.niche !== undefined) updateData.niche = updates.niche
+      if (updates.apiUrl !== undefined) updateData.api_url = updates.apiUrl
+      if (updates.apiSecret !== undefined) updateData.api_secret = updates.apiSecret
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive
+      if (updates.associatedAgents !== undefined) updateData.associated_agents = updates.associatedAgents
+
+      const { error } = await supabase
+        .from("neurocores")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar neurocore: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "neurocores")
+    } catch (error) {
+      console.error("Erro ao atualizar neurocore:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteNeuroCore = useCallback(async (id: string) => {
     await deleteEntity(id, "neurocores")
   }, [deleteEntity])
+
+  // Agents - Fetch Functions (Task 7)
+  const fetchAgents = useCallback(async (): Promise<Agent[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("agents")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar agents:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo Agent
+      return data.map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.type as Agent["type"],
+        function: a.function as Agent["function"],
+        gender: a.gender as Agent["gender"],
+        persona: a.persona || "",
+        personalityTone: a.personality_tone || "",
+        communicationMedium: a.communication_medium || "",
+        objective: a.objective || "",
+        instructions: (a.instructions || []) as AgentInstruction[],
+        limitations: (a.limitations || []) as AgentLimitation[],
+        conversationRoteiro: (a.conversation_roteiro || []) as AgentConversationRoteiro[],
+        otherInstructions: (a.other_instructions || []) as AgentOtherInstruction[],
+        isIntentAgent: a.is_intent_agent ?? false,
+        associatedNeuroCores: (a.associated_neurocores || []) as string[],
+        createdAt: a.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar agents:", error)
+      return []
+    }
+  }, [])
 
   // Agents
   const createAgent = useCallback(async (agent: Omit<Agent, "id" | "createdAt">) => {
@@ -629,13 +793,116 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await deleteEntity(id, "synapses")
   }, [deleteEntity])
 
-  // Feedbacks
+  // Feedbacks - Fetch Functions (Task 9)
+  const fetchFeedbacks = useCallback(async (): Promise<Feedback[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("feedbacks")
+        .select(`
+          *,
+          tenant:tenants!fk_feedbacks_tenant(id, name),
+          user:users!fk_feedbacks_user(id, full_name, email),
+          conversation:conversations!fk_feedbacks_conversation(id, contact_id, tenant_id),
+          message:messages!fk_feedbacks_message(id, content, timestamp, sender_type)
+        `)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Erro ao buscar feedbacks:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo Feedback
+      return data.map((f) => ({
+        id: f.id,
+        tenantId: f.tenant_id,
+        userId: f.user_id,
+        conversationId: f.conversation_id,
+        messageId: f.message_id,
+        feedbackType: f.feedback_type as Feedback["feedbackType"],
+        feedbackText: f.feedback_text,
+        feedbackStatus: f.feedback_status as Feedback["feedbackStatus"],
+        superAdminComment: f.super_admin_comment,
+        createdAt: f.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar feedbacks:", error)
+      return []
+    }
+  }, [])
+
+  const fetchConversationMessages = useCallback(async (conversationId: string): Promise<Message[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("timestamp", { ascending: true })
+
+      if (error) {
+        console.error("Erro ao buscar mensagens da conversa:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo Message
+      return data.map((m) => ({
+        id: m.id,
+        conversationId: m.conversation_id,
+        senderType: m.sender_type as Message["senderType"],
+        senderId: m.sender_id,
+        content: m.content,
+        timestamp: m.timestamp || new Date().toISOString(),
+        feedback: m.feedback ? {
+          type: m.feedback.type as FeedbackType,
+          text: m.feedback.text || null,
+        } : null,
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar mensagens da conversa:", error)
+      return []
+    }
+  }, [])
+
   const createFeedback = useCallback(async (feedback: Omit<Feedback, "id" | "createdAt">) => {
     await createEntity({ ...feedback, createdAt: new Date().toISOString() }, "feedbacks")
   }, [createEntity])
 
   const updateFeedback = useCallback(async (id: string, updates: Partial<Feedback>) => {
-    await updateEntity(id, updates, "feedbacks")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.feedbackStatus !== undefined) updateData.feedback_status = updates.feedbackStatus
+      if (updates.superAdminComment !== undefined) updateData.super_admin_comment = updates.superAdminComment
+      if (updates.feedbackText !== undefined) updateData.feedback_text = updates.feedbackText
+      if (updates.feedbackType !== undefined) updateData.feedback_type = updates.feedbackType
+
+      const { error } = await supabase
+        .from("feedbacks")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar feedback: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "feedbacks")
+    } catch (error) {
+      console.error("Erro ao atualizar feedback:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteFeedback = useCallback(async (id: string) => {
@@ -819,6 +1086,322 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [updateTenant])
 
+  // Dashboard - Fetch Functions (Task 10)
+  const fetchDashboardKpis = useCallback(async (filters: { period: string; conversationSelection: string }) => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Calcular data de início baseada no período
+      let periodStart: string | null = null
+      if (filters.period === GlobalFilterPeriod.SEVEN_DAYS) {
+        periodStart = dayjs().subtract(7, "days").toISOString()
+      } else if (filters.period === GlobalFilterPeriod.THIRTY_DAYS) {
+        periodStart = dayjs().subtract(30, "days").toISOString()
+      }
+      
+      // Buscar contagem de tenants (apenas para Super Admin)
+      const { data: tenantsData, error: tenantsError } = await supabase
+        .from("tenants")
+        .select("id, is_active", { count: "exact", head: false })
+      
+      const activeTenants = tenantsData?.filter(t => t.is_active).length || 0
+      const totalTenants = tenantsData?.length || 0
+      
+      // Construir query de conversas
+      let conversationsQuery = supabase
+        .from("conversations")
+        .select("id, status, ia_active, last_message_at", { count: "exact", head: false })
+      
+      // Aplicar filtro de período
+      if (periodStart) {
+        conversationsQuery = conversationsQuery.gte("last_message_at", periodStart)
+      }
+      
+      const { data: conversationsData, error: conversationsError } = await conversationsQuery
+      
+      if (conversationsError) {
+        console.error("Erro ao buscar conversas para KPIs:", conversationsError)
+      }
+      
+      // Filtrar conversas baseado na seleção
+      let filteredConversations = conversationsData || []
+      
+      if (filters.conversationSelection === GlobalFilterConversationSelection.IA_NOW) {
+        filteredConversations = filteredConversations.filter(
+          c => c.status === ConversationStatus.CONVERSANDO && c.ia_active === true
+        )
+      } else if (filters.conversationSelection === GlobalFilterConversationSelection.PAUSED_NOW) {
+        filteredConversations = filteredConversations.filter(
+          c => c.status === ConversationStatus.PAUSADA
+        )
+      }
+      
+      // Calcular KPIs
+      const conversationsWithIA = filteredConversations.filter(
+        c => c.status === ConversationStatus.CONVERSANDO && c.ia_active === true
+      ).length
+      
+      const pausedConversations = filteredConversations.filter(
+        c => c.status === ConversationStatus.PAUSADA
+      ).length
+      
+      return {
+        activeTenants,
+        totalTenants,
+        conversationsWithIA,
+        pausedConversations,
+      }
+    } catch (error) {
+      console.error("Erro ao buscar KPIs do Dashboard:", error)
+      return {
+        activeTenants: 0,
+        totalTenants: 0,
+        conversationsWithIA: 0,
+        pausedConversations: 0,
+      }
+    }
+  }, [])
+
+  const fetchConversationsByHour = useCallback(async (filters: { period: string; conversationSelection: string }) => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Calcular data de início baseada no período
+      let periodStart: string | null = null
+      if (filters.period === GlobalFilterPeriod.SEVEN_DAYS) {
+        periodStart = dayjs().subtract(7, "days").toISOString()
+      } else if (filters.period === GlobalFilterPeriod.THIRTY_DAYS) {
+        periodStart = dayjs().subtract(30, "days").toISOString()
+      }
+      
+      // Construir query de conversas
+      let conversationsQuery = supabase
+        .from("conversations")
+        .select("id, status, ia_active, last_message_at")
+      
+      // Aplicar filtro de período
+      if (periodStart) {
+        conversationsQuery = conversationsQuery.gte("last_message_at", periodStart)
+      }
+      
+      const { data: conversationsData, error: conversationsError } = await conversationsQuery
+      
+      if (conversationsError) {
+        console.error("Erro ao buscar conversas por hora:", conversationsError)
+        return []
+      }
+      
+      // Filtrar conversas baseado na seleção
+      let filteredConversations = conversationsData || []
+      
+      if (filters.conversationSelection === GlobalFilterConversationSelection.IA_NOW) {
+        filteredConversations = filteredConversations.filter(
+          c => c.status === ConversationStatus.CONVERSANDO && c.ia_active === true
+        )
+      } else if (filters.conversationSelection === GlobalFilterConversationSelection.PAUSED_NOW) {
+        filteredConversations = filteredConversations.filter(
+          c => c.status === ConversationStatus.PAUSADA
+        )
+      }
+      
+      // Agrupar por hora do dia
+      const hourCounts: Record<number, number> = {}
+      for (let i = 0; i < 24; i++) {
+        hourCounts[i] = 0
+      }
+      
+      filteredConversations.forEach((conv) => {
+        const hour = dayjs(conv.last_message_at).hour()
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1
+      })
+      
+      // Formatar dados para o gráfico
+      return Array.from({ length: 24 }, (_, i) => ({
+        hora: `${i.toString().padStart(2, "0")}h`,
+        conversas: hourCounts[i] || 0,
+      }))
+    } catch (error) {
+      console.error("Erro ao buscar conversas por hora:", error)
+      return []
+    }
+  }, [])
+
+  const fetchConversationKeywords = useCallback(async (filters: { period: string; conversationSelection: string }) => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Calcular data de início baseada no período
+      let periodStart: string | null = null
+      if (filters.period === GlobalFilterPeriod.SEVEN_DAYS) {
+        periodStart = dayjs().subtract(7, "days").toISOString()
+      } else if (filters.period === GlobalFilterPeriod.THIRTY_DAYS) {
+        periodStart = dayjs().subtract(30, "days").toISOString()
+      }
+      
+      // Buscar conversas filtradas
+      let conversationsQuery = supabase
+        .from("conversations")
+        .select("id, status, ia_active, last_message_at")
+      
+      if (periodStart) {
+        conversationsQuery = conversationsQuery.gte("last_message_at", periodStart)
+      }
+      
+      const { data: conversationsData, error: conversationsError } = await conversationsQuery
+      
+      if (conversationsError) {
+        console.error("Erro ao buscar conversas para keywords:", conversationsError)
+        return []
+      }
+      
+      // Filtrar conversas baseado na seleção
+      let filteredConversations = conversationsData || []
+      
+      if (filters.conversationSelection === GlobalFilterConversationSelection.IA_NOW) {
+        filteredConversations = filteredConversations.filter(
+          c => c.status === ConversationStatus.CONVERSANDO && c.ia_active === true
+        )
+      } else if (filters.conversationSelection === GlobalFilterConversationSelection.PAUSED_NOW) {
+        filteredConversations = filteredConversations.filter(
+          c => c.status === ConversationStatus.PAUSADA
+        )
+      }
+      
+      if (filteredConversations.length === 0) {
+        return []
+      }
+      
+      // Buscar mensagens dessas conversas
+      const conversationIds = filteredConversations.map(c => c.id)
+      
+      // Fazer requisição em batches de 100 IDs por vez (limite do Supabase)
+      const allMessages: any[] = []
+      for (let i = 0; i < conversationIds.length; i += 100) {
+        const batchIds = conversationIds.slice(i, i + 100)
+        const { data: messagesData, error: messagesError } = await supabase
+          .from("messages")
+          .select("content")
+          .in("conversation_id", batchIds)
+          .limit(1000) // Limitar para não sobrecarregar
+        
+        if (messagesError) {
+          console.error("Erro ao buscar mensagens para keywords:", messagesError)
+        } else if (messagesData) {
+          allMessages.push(...messagesData)
+        }
+      }
+      
+      // Processar palavras-chave
+      const wordCounts: Record<string, number> = {}
+      allMessages.forEach((msg) => {
+        if (!msg.content) return
+        const words = msg.content.toLowerCase().split(/\s+/)
+        words.forEach((word) => {
+          // Limpar palavra de caracteres especiais
+          const cleanWord = word.replace(/[^\wáàâãéèêíìîóòôõúùûç]/g, "")
+          // Apenas palavras com mais de 3 caracteres
+          if (cleanWord.length > 3) {
+            wordCounts[cleanWord] = (wordCounts[cleanWord] || 0) + 1
+          }
+        })
+      })
+      
+      // Ordenar e retornar top 30 palavras
+      return Object.entries(wordCounts)
+        .map(([word, count]) => ({ word, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 30)
+    } catch (error) {
+      console.error("Erro ao buscar keywords:", error)
+      return []
+    }
+  }, [])
+
+  const fetchTenantListWithConversationCounts = useCallback(async (filters: { period: string; conversationSelection: string }) => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Calcular data de início baseada no período
+      let periodStart: string | null = null
+      if (filters.period === GlobalFilterPeriod.SEVEN_DAYS) {
+        periodStart = dayjs().subtract(7, "days").toISOString()
+      } else if (filters.period === GlobalFilterPeriod.THIRTY_DAYS) {
+        periodStart = dayjs().subtract(30, "days").toISOString()
+      }
+      
+      // Buscar tenants
+      const { data: tenantsData, error: tenantsError } = await supabase
+        .from("tenants")
+        .select("id, name, neurocore_id, is_active")
+        .order("name")
+      
+      if (tenantsError) {
+        console.error("Erro ao buscar tenants:", tenantsError)
+        return []
+      }
+      
+      if (!tenantsData) {
+        return []
+      }
+      
+      // Buscar NeuroCores
+      const { data: neuroCoresData } = await supabase
+        .from("neurocores")
+        .select("id, name")
+      
+      // Buscar usuários por tenant
+      const { data: usersData } = await supabase
+        .from("users")
+        .select("id, tenant_id")
+      
+      // Buscar conversas
+      let conversationsQuery = supabase
+        .from("conversations")
+        .select("id, tenant_id, status, last_message_at")
+      
+      if (periodStart) {
+        conversationsQuery = conversationsQuery.gte("last_message_at", periodStart)
+      }
+      
+      const { data: conversationsData } = await conversationsQuery
+      
+      // Mapear dados
+      return tenantsData.map((tenant) => {
+        const neurocore = neuroCoresData?.find(nc => nc.id === tenant.neurocore_id)
+        const userCount = usersData?.filter(u => u.tenant_id === tenant.id).length || 0
+        
+        // Filtrar conversas do tenant
+        const tenantConversations = conversationsData?.filter(c => c.tenant_id === tenant.id) || []
+        
+        const openConversations = tenantConversations.filter(
+          c => c.status === ConversationStatus.CONVERSANDO
+        ).length
+        
+        const pausedConversations = tenantConversations.filter(
+          c => c.status === ConversationStatus.PAUSADA
+        ).length
+        
+        const closedConversations = tenantConversations.filter(
+          c => c.status === ConversationStatus.ENCERRADA
+        ).length
+        
+        return {
+          id: tenant.id,
+          name: tenant.name,
+          neurocoreName: neurocore?.name || "N/A",
+          userCount,
+          openConversations,
+          pausedConversations,
+          closedConversations,
+          isActive: tenant.is_active ?? true,
+        }
+      })
+    } catch (error) {
+      console.error("Erro ao buscar lista de tenants com contagens:", error)
+      return []
+    }
+  }, [])
+
   const value: DataContextType = {
     state,
     isLoading,
@@ -831,9 +1414,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createUser,
     updateUser,
     deleteUser,
+    fetchNeurocores,
     createNeuroCore,
     updateNeuroCore,
     deleteNeuroCore,
+    fetchAgents,
     createAgent,
     updateAgent,
     deleteAgent,
@@ -852,6 +1437,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createSynapse,
     updateSynapse,
     deleteSynapse,
+    fetchFeedbacks,
+    fetchConversationMessages,
     createFeedback,
     updateFeedback,
     deleteFeedback,
@@ -864,6 +1451,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     fetchTenantProfile,
     updateUserProfile,
     updateTenantProfile,
+    fetchDashboardKpis,
+    fetchConversationsByHour,
+    fetchConversationKeywords,
+    fetchTenantListWithConversationCounts,
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

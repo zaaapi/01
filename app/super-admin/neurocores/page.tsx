@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { PageContainer } from "@/components/shared/page-container"
 import { PageHeader } from "@/components/shared/page-header"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, PowerOff, Power, Brain, Bot } from "lucide-react"
+import { Plus, Pencil, PowerOff, Power, Brain, Bot, Eye } from "lucide-react"
 import { useData } from "@/lib/contexts/data-provider"
 import { useToast } from "@/hooks/use-toast"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
@@ -29,8 +29,14 @@ import { AssociarAgentesSheet } from "./_components/associar-agentes-sheet"
 
 export default function NeuroCoresPage() {
   const router = useRouter()
-  const { state, isLoading, createNeuroCore, updateNeuroCore } = useData()
+  const { fetchNeurocores, fetchTenants, fetchAgents, createNeuroCore, updateNeuroCore } = useData()
   const { toast } = useToast()
+
+  // Estados locais para dados do Supabase
+  const [neurocores, setNeurocores] = useState<NeuroCore[]>([])
+  const [tenants, setTenants] = useState<{ id: string; neurocoreId: string }[]>([])
+  const [agents, setAgents] = useState<{ id: string }[]>([])
+  const [isLoadingNeurocores, setIsLoadingNeurocores] = useState(true)
 
   // Estado dos modais
   const [addEditModal, setAddEditModal] = useState<{
@@ -73,15 +79,39 @@ export default function NeuroCoresPage() {
     onNavigate3: () => router.push("/super-admin/perfil"),
   })
 
+  // Carregar dados do Supabase ao montar o componente
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoadingNeurocores(true)
+      try {
+        const [fetchedNeurocores, fetchedTenants, fetchedAgents] = await Promise.all([
+          fetchNeurocores(),
+          fetchTenants("all"),
+          fetchAgents(),
+        ])
+        setNeurocores(fetchedNeurocores)
+        setTenants(fetchedTenants.map((t) => ({ id: t.id, neurocoreId: t.neurocoreId })))
+        setAgents(fetchedAgents.map((a) => ({ id: a.id })))
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os NeuroCores.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingNeurocores(false)
+      }
+    }
+
+    loadData()
+  }, [fetchNeurocores, fetchTenants, fetchAgents, toast])
+
   // Calcular empresas associadas por NeuroCore
   const neurocoresList = useMemo(() => {
-    return state.neurocores.map((neurocore) => {
-      const empresasCount = state.tenants.filter(
-        (t) => t.neurocoreId === neurocore.id
-      ).length
-      const agentesCount = state.agents.filter((a) =>
-        neurocore.associatedAgents.includes(a.id)
-      ).length
+    return neurocores.map((neurocore) => {
+      const empresasCount = tenants.filter((t) => t.neurocoreId === neurocore.id).length
+      const agentesCount = agents.filter((a) => neurocore.associatedAgents.includes(a.id)).length
 
       return {
         ...neurocore,
@@ -89,7 +119,7 @@ export default function NeuroCoresPage() {
         agentesCount,
       }
     })
-  }, [state.neurocores, state.tenants, state.agents])
+  }, [neurocores, tenants, agents])
 
   // Handlers para adicionar/editar NeuroCore
   const handleOpenAddModal = () => {
@@ -106,6 +136,8 @@ export default function NeuroCoresPage() {
     niche: string
     apiUrl: string
     apiSecret: string
+    isActive?: boolean
+    associatedAgents?: string[]
   }) => {
     try {
       if (addEditModal.neurocore) {
@@ -116,6 +148,8 @@ export default function NeuroCoresPage() {
           niche: data.niche,
           apiUrl: data.apiUrl,
           apiSecret: data.apiSecret,
+          isActive: data.isActive ?? addEditModal.neurocore.isActive,
+          associatedAgents: data.associatedAgents ?? addEditModal.neurocore.associatedAgents,
         })
         toast({
           title: "NeuroCore atualizado",
@@ -129,8 +163,8 @@ export default function NeuroCoresPage() {
           niche: data.niche,
           apiUrl: data.apiUrl,
           apiSecret: data.apiSecret,
-          isActive: true,
-          associatedAgents: [],
+          isActive: data.isActive ?? true,
+          associatedAgents: data.associatedAgents || [],
         })
         toast({
           title: "NeuroCore criado",
@@ -138,6 +172,10 @@ export default function NeuroCoresPage() {
         })
       }
       setAddEditModal({ open: false, neurocore: null })
+      
+      // Recarregar dados após salvar
+      const fetchedNeurocores = await fetchNeurocores()
+      setNeurocores(fetchedNeurocores)
     } catch (error) {
       toast({
         title: "Erro",
@@ -161,6 +199,10 @@ export default function NeuroCoresPage() {
           description: "O NeuroCore foi inativado com sucesso.",
         })
         setInativarModal({ open: false, neurocore: null })
+        
+        // Recarregar dados após inativar
+        const fetchedNeurocores = await fetchNeurocores()
+        setNeurocores(fetchedNeurocores)
       } catch (error) {
         toast({
           title: "Erro",
@@ -184,6 +226,10 @@ export default function NeuroCoresPage() {
           description: "O NeuroCore foi reativado com sucesso.",
         })
         setReativarModal({ open: false, neurocore: null })
+        
+        // Recarregar dados após reativar
+        const fetchedNeurocores = await fetchNeurocores()
+        setNeurocores(fetchedNeurocores)
       } catch (error) {
         toast({
           title: "Erro",
@@ -210,6 +256,10 @@ export default function NeuroCoresPage() {
           description: "Os agentes foram associados com sucesso.",
         })
         setAgentesSheet({ open: false, neurocore: null })
+        
+        // Recarregar dados após associar agentes
+        const fetchedNeurocores = await fetchNeurocores()
+        setNeurocores(fetchedNeurocores)
       } catch (error) {
         toast({
           title: "Erro",
@@ -220,7 +270,19 @@ export default function NeuroCoresPage() {
     }
   }
 
-  if (isLoading) {
+  const [viewModal, setViewModal] = useState<{
+    open: boolean
+    neurocore: NeuroCore | null
+  }>({
+    open: false,
+    neurocore: null,
+  })
+
+  const handleOpenViewModal = (neurocore: NeuroCore) => {
+    setViewModal({ open: true, neurocore })
+  }
+
+  if (isLoadingNeurocores) {
     return (
       <PageContainer>
         <PageHeader title="Gerenciar NeuroCores" description="Configure e gerencie os NeuroCores do sistema" />
@@ -301,6 +363,14 @@ export default function NeuroCoresPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleOpenViewModal(neurocore)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver Detalhes
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleAssociarAgentes(neurocore)}
                           >
                             <Bot className="h-4 w-4 mr-1" />
@@ -349,6 +419,15 @@ export default function NeuroCoresPage() {
         open={addEditModal.open}
         onOpenChange={(open) => setAddEditModal({ ...addEditModal, open })}
         neurocore={addEditModal.neurocore}
+        isViewMode={false}
+        onSave={handleSaveNeuroCore}
+      />
+
+      <AddEditNeuroCoreModal
+        open={viewModal.open}
+        onOpenChange={(open) => setViewModal({ ...viewModal, open })}
+        neurocore={viewModal.neurocore}
+        isViewMode={true}
         onSave={handleSaveNeuroCore}
       />
 

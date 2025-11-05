@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { PageContainer } from "@/components/shared/page-container"
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -33,10 +33,21 @@ import { formatDateTime } from "@/lib/formatters"
 import { FeedbackDetailsModal } from "./_components/feedback-details-modal"
 import { ChangeStatusModal } from "./_components/change-status-modal"
 
+// Tipo enriquecido para feedbacks com dados relacionados
+interface EnrichedFeedback extends Feedback {
+  messageContent: string
+  tenantName: string
+  userName: string
+  contactName: string
+}
+
 export default function FeedbacksPage() {
   const router = useRouter()
-  const { state, isLoading, updateFeedback } = useData()
+  const { fetchFeedbacks, updateFeedback } = useData()
   const { toast } = useToast()
+
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   const [statusFilter, setStatusFilter] = useState<FeedbackStatus | "all">("all")
   const [typeFilter, setTypeFilter] = useState<FeedbackType | "all">("all")
@@ -57,6 +68,27 @@ export default function FeedbacksPage() {
     feedback: null,
   })
 
+  // Buscar feedbacks do Supabase
+  useEffect(() => {
+    const loadFeedbacks = async () => {
+      setIsLoading(true)
+      try {
+        const data = await fetchFeedbacks()
+        setFeedbacks(data)
+      } catch (error) {
+        console.error("Erro ao carregar feedbacks:", error)
+        toast({
+          title: "Erro ao carregar feedbacks",
+          description: "Não foi possível carregar os feedbacks. Tente novamente.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadFeedbacks()
+  }, [fetchFeedbacks, toast])
+
   // Atalhos de teclado
   useKeyboardShortcuts({
     onNavigate1: () => router.push("/super-admin"),
@@ -64,72 +96,55 @@ export default function FeedbacksPage() {
     onNavigate3: () => router.push("/super-admin/perfil"),
   })
 
-  // Filtrar feedbacks
-  const filteredFeedbacks = useMemo(() => {
-    let feedbacks = state.feedbacks
+  // Filtrar e enriquecer feedbacks
+  const enrichedFeedbacks = useMemo(() => {
+    let filtered = feedbacks
 
     if (statusFilter !== "all") {
-      feedbacks = feedbacks.filter((f) => f.feedbackStatus === statusFilter)
+      filtered = filtered.filter((f) => f.feedbackStatus === statusFilter)
     }
 
     if (typeFilter !== "all") {
-      feedbacks = feedbacks.filter((f) => f.feedbackType === typeFilter)
+      filtered = filtered.filter((f) => f.feedbackType === typeFilter)
     }
 
-    return feedbacks.sort((a, b) => {
+    // Ordenar por data (mais recentes primeiro)
+    const sorted = filtered.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime()
       const dateB = new Date(b.createdAt).getTime()
-      return dateB - dateA // Mais recentes primeiro
+      return dateB - dateA
     })
-  }, [state.feedbacks, statusFilter, typeFilter])
 
-  // Enriquecer feedbacks com dados de tenant e usuário
-  const enrichedFeedbacks = useMemo(() => {
-    return filteredFeedbacks.map((feedback) => {
-      const message = state.messages.find((m) => m.id === feedback.messageId)
-      const conversation = message
-        ? state.conversations.find((c) => c.id === message.conversationId)
-        : null
-      const tenant = conversation
-        ? state.tenants.find((t) => t.id === conversation.tenantId)
-        : null
-      const user = feedback.userId
-        ? state.users.find((u) => u.id === feedback.userId)
-        : null
+    // Os dados relacionados já vêm do Supabase através dos JOINs
+    // Vamos processar e enriquecer os feedbacks
+    return sorted.map((feedback: any): EnrichedFeedback => ({
+      ...feedback,
+      messageContent: feedback.message?.content || "Feedback geral da conversa",
+      tenantName: feedback.tenant?.name || "N/A",
+      userName: feedback.user?.full_name || "N/A",
+      contactName: "N/A", // Precisaremos buscar do contact se necessário
+    }))
+  }, [feedbacks, statusFilter, typeFilter])
 
-      return {
-        ...feedback,
-        messageContent: message?.content || "N/A",
-        tenantName: tenant?.name || "N/A",
-        userName: user?.fullName || "N/A",
-        conversationId: conversation?.id || null,
-        type: feedback.feedbackType,
-        status: feedback.feedbackStatus,
-        text: feedback.feedbackText,
-      }
-    })
-  }, [filteredFeedbacks, state.messages, state.conversations, state.tenants, state.users])
-
-  const handleViewDetails = (feedbackEnriched: typeof enrichedFeedbacks[0]) => {
-    // Buscar o feedback original do state
-    const originalFeedback = state.feedbacks.find((f) => f.id === feedbackEnriched.id)
-    if (originalFeedback) {
-      setDetailsModal({ open: true, feedback: originalFeedback })
-    }
+  const handleViewDetails = (feedbackEnriched: EnrichedFeedback) => {
+    // Usar o feedback enriquecido diretamente
+    setDetailsModal({ open: true, feedback: feedbackEnriched })
   }
 
-  const handleChangeStatus = (feedbackEnriched: typeof enrichedFeedbacks[0]) => {
-    // Buscar o feedback original do state
-    const originalFeedback = state.feedbacks.find((f) => f.id === feedbackEnriched.id)
-    if (originalFeedback) {
-      setChangeStatusModal({ open: true, feedback: originalFeedback })
-    }
+  const handleChangeStatus = (feedbackEnriched: EnrichedFeedback) => {
+    // Usar o feedback enriquecido diretamente
+    setChangeStatusModal({ open: true, feedback: feedbackEnriched })
   }
 
   const handleConfirmStatusChange = async (newStatus: FeedbackStatus) => {
     if (changeStatusModal.feedback) {
       try {
         await updateFeedback(changeStatusModal.feedback.id, { feedbackStatus: newStatus })
+        
+        // Recarregar feedbacks
+        const updatedFeedbacks = await fetchFeedbacks()
+        setFeedbacks(updatedFeedbacks)
+        
         toast({
           title: "Status atualizado",
           description: "O status do feedback foi atualizado com sucesso.",
@@ -315,12 +330,12 @@ export default function FeedbacksPage() {
               {/* Rodapé com contadores */}
               <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                 <p>
-                  Mostrando {enrichedFeedbacks.length} de {state.feedbacks.length} feedbacks
+                  Mostrando {enrichedFeedbacks.length} de {feedbacks.length} feedbacks
                 </p>
                 <p>
-                  {state.feedbacks.filter((f) => f.feedbackStatus === FeedbackStatus.EM_ABERTO).length} em aberto •{" "}
-                  {state.feedbacks.filter((f) => f.feedbackStatus === FeedbackStatus.SENDO_TRATADO).length} sendo tratados •{" "}
-                  {state.feedbacks.filter((f) => f.feedbackStatus === FeedbackStatus.ENCERRADO).length} encerrados
+                  {feedbacks.filter((f) => f.feedbackStatus === FeedbackStatus.EM_ABERTO).length} em aberto •{" "}
+                  {feedbacks.filter((f) => f.feedbackStatus === FeedbackStatus.SENDO_TRATADO).length} sendo tratados •{" "}
+                  {feedbacks.filter((f) => f.feedbackStatus === FeedbackStatus.ENCERRADO).length} encerrados
                 </p>
               </div>
             </>
@@ -333,6 +348,11 @@ export default function FeedbacksPage() {
         open={detailsModal.open}
         onOpenChange={(open) => setDetailsModal({ ...detailsModal, open })}
         feedback={detailsModal.feedback}
+        onSave={async () => {
+          // Recarregar feedbacks após salvar
+          const updatedFeedbacks = await fetchFeedbacks()
+          setFeedbacks(updatedFeedbacks)
+        }}
       />
 
       <ChangeStatusModal

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { PageContainer } from "@/components/shared/page-container"
 import { PageHeader } from "@/components/shared/page-header"
@@ -18,20 +18,38 @@ import {
 import { Brain, MessagesSquare, Book, Search } from "lucide-react"
 import { useData } from "@/lib/contexts/data-provider"
 import { useAuth } from "@/lib/contexts/auth-context"
-import { GlobalFilterPeriod, GlobalFilterConversationSelection, ConversationStatus } from "@/types"
+import { GlobalFilterPeriod, GlobalFilterConversationSelection } from "@/types"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { useRouter } from "next/navigation"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import dayjs from "dayjs"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ClienteDashboard() {
   const router = useRouter()
-  const { state, isLoading, updateGlobalFilters } = useData()
+  const {
+    state,
+    isLoading: providerLoading,
+    fetchDashboardKpis,
+    fetchConversationsByHour,
+    fetchConversationKeywords,
+    updateGlobalFilters,
+  } = useData()
   const { user } = useAuth()
+  const { toast } = useToast()
+
   const [localPeriod, setLocalPeriod] = useState<GlobalFilterPeriod>(state.globalFilters.period)
   const [localConversationSelection, setLocalConversationSelection] = useState<GlobalFilterConversationSelection>(
     state.globalFilters.conversationSelection
   )
+
+  // Estados para dados do Dashboard
+  const [kpis, setKpis] = useState({ activeTenants: 0, totalTenants: 0, conversationsWithIA: 0, pausedConversations: 0 })
+  const [chartData, setChartData] = useState<{ hora: string; conversas: number }[]>([])
+  const [wordCloudData, setWordCloudData] = useState<{ word: string; count: number }[]>([])
+  const [loadingDashboard, setLoadingDashboard] = useState(true)
+  const [loadingKpis, setLoadingKpis] = useState(false)
+  const [loadingChart, setLoadingChart] = useState(false)
+  const [loadingKeywords, setLoadingKeywords] = useState(false)
 
   // Atalhos de teclado
   useKeyboardShortcuts({
@@ -40,93 +58,50 @@ export default function ClienteDashboard() {
     onNavigate3: () => router.push("/cliente/perfil"),
   })
 
-  // Filtrar dados apenas do tenant logado
-  const tenantId = user?.tenantId
-  const tenantConversations = useMemo(() => {
-    if (!tenantId) return []
-    return state.conversations.filter((c) => c.tenantId === tenantId)
-  }, [state.conversations, tenantId])
+  // Função para carregar todos os dados do Dashboard
+  const loadDashboardData = async () => {
+    setLoadingDashboard(true)
+    setLoadingKpis(true)
+    setLoadingChart(true)
+    setLoadingKeywords(true)
 
-  const tenantMessages = useMemo(() => {
-    if (!tenantId) return []
-    return state.messages.filter((m) => {
-      const conv = state.conversations.find((c) => c.id === m.conversationId)
-      return conv?.tenantId === tenantId
-    })
-  }, [state.messages, state.conversations, tenantId])
-
-  // Calcular KPIs
-  const kpis = useMemo(() => {
-    const now = new Date()
-    const periodStart = 
-      localPeriod === GlobalFilterPeriod.SEVEN_DAYS
-        ? dayjs().subtract(7, "days").toDate()
-        : localPeriod === GlobalFilterPeriod.THIRTY_DAYS
-        ? dayjs().subtract(30, "days").toDate()
-        : new Date(0)
-
-    const filteredConversations = tenantConversations.filter((conv) => {
-      const convDate = new Date(conv.lastMessageAt)
-      if (convDate < periodStart) return false
-
-      if (localConversationSelection === GlobalFilterConversationSelection.IA_NOW) {
-        return conv.status === ConversationStatus.CONVERSANDO && conv.iaActive
-      }
-      if (localConversationSelection === GlobalFilterConversationSelection.PAUSED_NOW) {
-        return conv.status === ConversationStatus.PAUSADA
-      }
-      return true
-    })
-
-    const conversationsWithIA = filteredConversations.filter(
-      (c) => c.status === ConversationStatus.CONVERSANDO && c.iaActive
-    ).length
-    const pausedConversations = filteredConversations.filter(
-      (c) => c.status === ConversationStatus.PAUSADA
-    ).length
-
-    return {
-      conversationsWithIA,
-      pausedConversations,
+    const filters = {
+      period: localPeriod,
+      conversationSelection: localConversationSelection,
     }
-  }, [tenantConversations, localPeriod, localConversationSelection])
 
-  // Dados para gráfico de conversas por hora
-  const chartData = useMemo(() => {
-    const hours = Array.from({ length: 24 }, (_, i) => i)
-    return hours.map((hour) => {
-      const hourStart = dayjs().startOf("day").add(hour, "hours")
-      const hourEnd = hourStart.add(1, "hour")
-      
-      const count = tenantConversations.filter((conv) => {
-        const convTime = dayjs(conv.lastMessageAt)
-        return convTime.isAfter(hourStart) && convTime.isBefore(hourEnd)
-      }).length
+    try {
+      // Carregar todos os dados em paralelo
+      const [kpisData, chartDataResult, keywordsData] = await Promise.all([
+        fetchDashboardKpis(filters),
+        fetchConversationsByHour(filters),
+        fetchConversationKeywords(filters),
+      ])
 
-      return {
-        hora: `${hour.toString().padStart(2, "0")}h`,
-        conversas: count,
-      }
-    })
-  }, [tenantConversations])
-
-  // Nuvem de palavras
-  const wordCloudData = useMemo(() => {
-    const wordCounts: Record<string, number> = {}
-    tenantMessages.forEach((msg) => {
-      const words = msg.content.toLowerCase().split(/\s+/)
-      words.forEach((word) => {
-        const cleanWord = word.replace(/[^\wáàâãéèêíìîóòôõúùûç]/g, "")
-        if (cleanWord.length > 3) {
-          wordCounts[cleanWord] = (wordCounts[cleanWord] || 0) + 1
-        }
+      setKpis(kpisData)
+      setChartData(chartDataResult)
+      setWordCloudData(keywordsData)
+    } catch (error) {
+      console.error("Erro ao carregar dados do Dashboard:", error)
+      toast({
+        title: "Erro ao carregar Dashboard",
+        description: "Não foi possível carregar os dados. Tente novamente.",
+        variant: "destructive",
       })
-    })
-    return Object.entries(wordCounts)
-      .map(([word, count]) => ({ word, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 30)
-  }, [tenantMessages])
+    } finally {
+      setLoadingDashboard(false)
+      setLoadingKpis(false)
+      setLoadingChart(false)
+      setLoadingKeywords(false)
+    }
+  }
+
+  // Carregar dados na montagem e quando os filtros mudarem
+  useEffect(() => {
+    if (!providerLoading && user?.tenantId) {
+      loadDashboardData()
+    }
+  }, [localPeriod, localConversationSelection, providerLoading, user?.tenantId])
 
   const handlePeriodChange = async (value: GlobalFilterPeriod) => {
     setLocalPeriod(value)
@@ -137,6 +112,8 @@ export default function ClienteDashboard() {
     setLocalConversationSelection(value)
     await updateGlobalFilters({ conversationSelection: value })
   }
+
+  const tenantId = user?.tenantId
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -153,7 +130,20 @@ export default function ClienteDashboard() {
     visible: { opacity: 1, y: 0 },
   }
 
-  if (isLoading) {
+  if (!tenantId) {
+    return (
+      <PageContainer>
+        <PageHeader title="Dashboard" description="Visão geral das suas conversas e atendimentos" />
+        <EmptyState
+          icon={Search}
+          title="Usuário não associado a um tenant"
+          description="Entre em contato com o administrador"
+        />
+      </PageContainer>
+    )
+  }
+
+  if (providerLoading || loadingDashboard) {
     return (
       <PageContainer>
         <PageHeader title="Dashboard" description="Visão geral das suas conversas e atendimentos" />
@@ -170,19 +160,6 @@ export default function ClienteDashboard() {
             </Card>
           ))}
         </div>
-      </PageContainer>
-    )
-  }
-
-  if (!tenantId) {
-    return (
-      <PageContainer>
-        <PageHeader title="Dashboard" description="Visão geral das suas conversas e atendimentos" />
-        <EmptyState
-          icon={Search}
-          title="Usuário não associado a um tenant"
-          description="Entre em contato com o administrador"
-        />
       </PageContainer>
     )
   }
@@ -245,10 +222,19 @@ export default function ClienteDashboard() {
               <Brain className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpis.conversationsWithIA}</div>
-              <p className="text-xs text-muted-foreground">
-                IA ativa respondendo
-              </p>
+              {loadingKpis ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-32" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{kpis.conversationsWithIA}</div>
+                  <p className="text-xs text-muted-foreground">
+                    IA ativa respondendo
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -262,10 +248,19 @@ export default function ClienteDashboard() {
               <MessagesSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpis.pausedConversations}</div>
-              <p className="text-xs text-muted-foreground">
-                Aguardando atendimento
-              </p>
+              {loadingKpis ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-32" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{kpis.pausedConversations}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Aguardando atendimento
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -279,12 +274,21 @@ export default function ClienteDashboard() {
               <Book className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {state.baseConhecimentos.filter((b) => b.tenantId === tenantId && b.isActive).length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {state.synapses.filter((s) => s.tenantId === tenantId && s.status === "PUBLICANDO").length} synapses ativas
-              </p>
+              {loadingKpis ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-32" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {state.baseConhecimentos.filter((b) => b.tenantId === tenantId && b.isActive).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {state.synapses.filter((s) => s.tenantId === tenantId && s.status === "PUBLICANDO").length} synapses ativas
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -297,7 +301,11 @@ export default function ClienteDashboard() {
             <CardTitle>Quantidade de Conversas por Hora do Dia</CardTitle>
           </CardHeader>
           <CardContent>
-            {chartData.some((d) => d.conversas > 0) ? (
+            {loadingChart ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : chartData.length > 0 && chartData.some((d) => d.conversas > 0) ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -325,7 +333,11 @@ export default function ClienteDashboard() {
             <CardTitle>Nuvem de Palavras</CardTitle>
           </CardHeader>
           <CardContent>
-            {wordCloudData.length > 0 ? (
+            {loadingKeywords ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : wordCloudData.length > 0 ? (
               <WordCloud words={wordCloudData} />
             ) : (
               <EmptyState
