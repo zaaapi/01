@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { PageContainer } from "@/components/shared/page-container"
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,7 +19,7 @@ import { PersonalizarAgenteModal } from "./_components/personalizar-agente-modal
 
 export default function PersonalizacaoPage() {
   const router = useRouter()
-  const { state, isLoading } = useData()
+  const { fetchAgentsByTenantNeurocore, fetchTenantProfile } = useData()
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -27,6 +27,9 @@ export default function PersonalizacaoPage() {
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [neurocoreId, setNeurocoreId] = useState<string | null>(null)
 
   // Atalhos de teclado
   useKeyboardShortcuts({
@@ -35,27 +38,47 @@ export default function PersonalizacaoPage() {
     onNavigate3: () => router.push("/cliente/perfil"),
   })
 
-  // Buscar NeuroCore do tenant e seus agentes associados
-  const tenantNeurocore = useMemo(() => {
-    if (!tenantId) return null
-    const tenant = state.tenants.find((t) => t.id === tenantId)
-    if (!tenant) return null
-    return state.neurocores.find((nc) => nc.id === tenant.neurocoreId)
-  }, [state.tenants, state.neurocores, tenantId])
+  // Buscar NeuroCore do tenant e seus agentes associados - Task 12
+  useEffect(() => {
+    const loadAgents = async () => {
+      if (!tenantId) {
+        setIsLoading(false)
+        return
+      }
 
-  const tenantAgents = useMemo(() => {
-    if (!tenantNeurocore) return []
-    return state.agents.filter((a) =>
-      tenantNeurocore.associatedAgents.includes(a.id)
-    )
-  }, [state.agents, tenantNeurocore])
+      try {
+        setIsLoading(true)
+        
+        // Buscar tenant para obter o neurocore_id
+        const tenant = await fetchTenantProfile(tenantId)
+        
+        if (!tenant || !tenant.neurocoreId) {
+          console.warn("Tenant não encontrado ou sem NeuroCore associado")
+          setAgents([])
+          setIsLoading(false)
+          return
+        }
 
-  // Ordenar: Agente de Intenções primeiro
-  const sortedAgents = useMemo(() => {
-    const intentAgent = tenantAgents.find((a) => a.isIntentAgent)
-    const otherAgents = tenantAgents.filter((a) => !a.isIntentAgent)
-    return intentAgent ? [intentAgent, ...otherAgents] : otherAgents
-  }, [tenantAgents])
+        setNeurocoreId(tenant.neurocoreId)
+
+        // Buscar agentes associados ao NeuroCore do tenant
+        const fetchedAgents = await fetchAgentsByTenantNeurocore(tenantId, tenant.neurocoreId)
+        setAgents(fetchedAgents)
+      } catch (error) {
+        console.error("Erro ao carregar agentes:", error)
+        toast({
+          title: "Erro ao carregar agentes",
+          description: "Não foi possível carregar os agentes. Tente novamente.",
+          variant: "destructive",
+        })
+        setAgents([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadAgents()
+  }, [tenantId, fetchAgentsByTenantNeurocore, fetchTenantProfile, toast])
 
   const handleOpenPersonalizar = (agent: Agent) => {
     setSelectedAgent(agent)
@@ -63,6 +86,16 @@ export default function PersonalizacaoPage() {
   }
 
   const handleSaveAgent = async () => {
+    // Recarregar agentes após salvar
+    if (tenantId && neurocoreId) {
+      try {
+        const updatedAgents = await fetchAgentsByTenantNeurocore(tenantId, neurocoreId)
+        setAgents(updatedAgents)
+      } catch (error) {
+        console.error("Erro ao recarregar agentes:", error)
+      }
+    }
+    
     toast({
       title: "Agente atualizado",
       description: "As personalizações do agente foram salvas com sucesso.",
@@ -112,7 +145,7 @@ export default function PersonalizacaoPage() {
         description="Configure os agentes de IA do seu NeuroCore"
       />
 
-      {sortedAgents.length === 0 ? (
+      {agents.length === 0 ? (
         <EmptyState
           icon={Bot}
           title="Nenhum agente configurado"
@@ -120,7 +153,7 @@ export default function PersonalizacaoPage() {
         />
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {sortedAgents.map((agent) => (
+          {agents.map((agent) => (
             <Card
               key={agent.id}
               className={agent.isIntentAgent ? "border-primary/50 shadow-lg" : ""}

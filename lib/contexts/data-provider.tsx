@@ -60,8 +60,9 @@ interface DataContextType {
   updateNeuroCore: (id: string, updates: Partial<NeuroCore>) => Promise<void>
   deleteNeuroCore: (id: string) => Promise<void>
   
-  // Agents - Fetch Functions (Task 7)
+  // Agents - Fetch Functions (Task 7, Task 12)
   fetchAgents: () => Promise<Agent[]>
+  fetchAgentsByTenantNeurocore: (tenantId: string, neurocoreId: string) => Promise<Agent[]>
   createAgent: (agent: Omit<Agent, "id" | "createdAt">) => Promise<void>
   updateAgent: (id: string, updates: Partial<Agent>) => Promise<void>
   deleteAgent: (id: string) => Promise<void>
@@ -723,13 +724,94 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Agents - Task 12: Fetch agents by tenant neurocore
+  const fetchAgentsByTenantNeurocore = useCallback(async (tenantId: string, neurocoreId: string): Promise<Agent[]> => {
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Buscar agentes que estão associados ao neurocore do tenant
+      const { data, error } = await supabase
+        .from("agents")
+        .select("*")
+        .contains("associated_neurocores", [neurocoreId])
+        .order("is_intent_agent", { ascending: false })
+        .order("name")
+
+      if (error) {
+        console.error("Erro ao buscar agents do tenant:", error)
+        return []
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Mapear dados do Supabase para o tipo Agent
+      return data.map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.type as Agent["type"],
+        function: a.function as Agent["function"],
+        gender: a.gender as Agent["gender"],
+        persona: a.persona || "",
+        personalityTone: a.personality_tone || "",
+        communicationMedium: a.communication_medium || "",
+        objective: a.objective || "",
+        instructions: (a.instructions || []) as AgentInstruction[],
+        limitations: (a.limitations || []) as AgentLimitation[],
+        conversationRoteiro: (a.conversation_roteiro || []) as AgentConversationRoteiro[],
+        otherInstructions: (a.other_instructions || []) as AgentOtherInstruction[],
+        isIntentAgent: a.is_intent_agent ?? false,
+        associatedNeuroCores: (a.associated_neurocores || []) as string[],
+        createdAt: a.created_at || new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("Exceção ao buscar agents do tenant:", error)
+      return []
+    }
+  }, [])
+
   // Agents
   const createAgent = useCallback(async (agent: Omit<Agent, "id" | "createdAt">) => {
     await createEntity({ ...agent, createdAt: new Date().toISOString() }, "agents")
   }, [createEntity])
 
   const updateAgent = useCallback(async (id: string, updates: Partial<Agent>) => {
-    await updateEntity(id, updates, "agents")
+    try {
+      const supabase = createSupabaseClient()
+      
+      // Preparar dados para atualização no Supabase
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.type !== undefined) updateData.type = updates.type
+      if (updates.function !== undefined) updateData.function = updates.function
+      if (updates.gender !== undefined) updateData.gender = updates.gender
+      if (updates.persona !== undefined) updateData.persona = updates.persona
+      if (updates.personalityTone !== undefined) updateData.personality_tone = updates.personalityTone
+      if (updates.communicationMedium !== undefined) updateData.communication_medium = updates.communicationMedium
+      if (updates.objective !== undefined) updateData.objective = updates.objective
+      if (updates.instructions !== undefined) updateData.instructions = updates.instructions
+      if (updates.limitations !== undefined) updateData.limitations = updates.limitations
+      if (updates.conversationRoteiro !== undefined) updateData.conversation_roteiro = updates.conversationRoteiro
+      if (updates.otherInstructions !== undefined) updateData.other_instructions = updates.otherInstructions
+      if (updates.isIntentAgent !== undefined) updateData.is_intent_agent = updates.isIntentAgent
+      if (updates.associatedNeuroCores !== undefined) updateData.associated_neurocores = updates.associatedNeuroCores
+
+      const { error } = await supabase
+        .from("agents")
+        .update(updateData)
+        .eq("id", id)
+
+      if (error) {
+        throw new Error(`Erro ao atualizar agente: ${error.message}`)
+      }
+
+      // Atualizar também no estado local (para sincronização)
+      await updateEntity(id, updates, "agents")
+    } catch (error) {
+      console.error("Erro ao atualizar agente:", error)
+      throw error
+    }
   }, [updateEntity])
 
   const deleteAgent = useCallback(async (id: string) => {
@@ -1626,6 +1708,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateNeuroCore,
     deleteNeuroCore,
     fetchAgents,
+    fetchAgentsByTenantNeurocore,
     createAgent,
     updateAgent,
     deleteAgent,

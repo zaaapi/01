@@ -1,12 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { MoveUp, MoveDown, Plus, Trash2, Pencil, GripVertical } from "lucide-react"
-import { AgentInstruction, AgentLimitation, AgentConversationRoteiro } from "@/types"
+import {
+  AgentInstruction,
+  AgentLimitation,
+  AgentConversationRoteiro,
+  AgentOtherInstruction,
+} from "@/types"
 import { useData } from "@/lib/contexts/data-provider"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -26,12 +30,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { AddEditItemModal } from "./add-edit-item-modal"
+import { ConfirmDeleteModal } from "./confirm-delete-modal"
 
-type KanbanItem = AgentInstruction | AgentLimitation | AgentConversationRoteiro
+type KanbanItem = AgentInstruction | AgentLimitation | AgentConversationRoteiro | AgentOtherInstruction
 
 interface KanbanBoardProps {
   items: KanbanItem[]
-  type: "instructions" | "limitacoes" | "roteiro"
+  type: "instructions" | "limitacoes" | "roteiro" | "outras"
   agentId: string
 }
 
@@ -68,31 +74,34 @@ function SortableItem({
 
   return (
     <div ref={setNodeRef} style={style} className="mb-2">
-      <Card className={item.isActive ? "border-primary" : ""}>
+      <Card className={item.isActive ? "border-primary" : "border-muted"}>
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing pt-1">
               <GripVertical className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex-1">
               <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
+                <div className="flex-1 pr-4">
                   <h4 className="font-medium">{item.title}</h4>
-                  {"description" in item && (
+                  {"description" in item && item.description && (
                     <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                   )}
-                  {"mainInstruction" in item && (
+                  {"mainInstruction" in item && item.mainInstruction && (
                     <p className="text-sm text-muted-foreground mt-1">{item.mainInstruction}</p>
                   )}
                 </div>
-                <Switch checked={item.isActive} onCheckedChange={onToggle} />
+                <div className="flex items-center gap-2">
+                  <Switch checked={item.isActive} onCheckedChange={onToggle} />
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-1 mt-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={onMoveUp}
                   disabled={!canMoveUp}
+                  title="Mover para cima"
                 >
                   <MoveUp className="h-4 w-4" />
                 </Button>
@@ -101,14 +110,21 @@ function SortableItem({
                   size="sm"
                   onClick={onMoveDown}
                   disabled={!canMoveDown}
+                  title="Mover para baixo"
                 >
                   <MoveDown className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={onEdit}>
+                <Button variant="ghost" size="sm" onClick={onEdit} title="Editar">
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={onDelete}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onDelete}
+                  title="Excluir"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -122,7 +138,15 @@ function SortableItem({
 export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
   const { updateAgent } = useData()
   const { toast } = useToast()
-  const [localItems, setLocalItems] = useState(items)
+  const [localItems, setLocalItems] = useState<KanbanItem[]>(items)
+  const [addEditModalOpen, setAddEditModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<KanbanItem | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<KanbanItem | null>(null)
+
+  useEffect(() => {
+    setLocalItems(items)
+  }, [items])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -130,6 +154,28 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
+
+  const getUpdateKey = () => {
+    switch (type) {
+      case "instructions":
+        return "instructions"
+      case "limitacoes":
+        return "limitations"
+      case "roteiro":
+        return "conversationRoteiro"
+      case "outras":
+        return "otherInstructions"
+      default:
+        return "instructions"
+    }
+  }
+
+  const saveItems = async (updatedItems: KanbanItem[]) => {
+    const updateKey = getUpdateKey()
+    await updateAgent(agentId, {
+      [updateKey]: updatedItems,
+    })
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -146,20 +192,8 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
           order: index,
         }))
 
-        // Salvar no DataProvider
-        if (type === "instructions") {
-          updateAgent(agentId, {
-            instructions: updatedItems as AgentInstruction[],
-          })
-        } else if (type === "limitacoes") {
-          updateAgent(agentId, {
-            limitations: updatedItems as AgentLimitation[],
-          })
-        } else {
-          updateAgent(agentId, {
-            conversationRoteiro: updatedItems as AgentConversationRoteiro[],
-          })
-        }
+        // Salvar no Supabase
+        saveItems(updatedItems)
 
         return updatedItems
       })
@@ -171,37 +205,92 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
       const updated = items.map((item) =>
         item.id === itemId ? { ...item, isActive: !item.isActive } : item
       )
-      if (type === "instructions") {
-        updateAgent(agentId, { instructions: updated as AgentInstruction[] })
-      } else if (type === "limitacoes") {
-        updateAgent(agentId, { limitations: updated as AgentLimitation[] })
-      } else {
-        updateAgent(agentId, { conversationRoteiro: updated as AgentConversationRoteiro[] })
-      }
+      saveItems(updated)
       return updated
     })
     toast({
       title: "Item atualizado",
-      description: "O item foi atualizado com sucesso.",
+      description: "O status do item foi atualizado com sucesso.",
     })
   }
 
-  const handleDelete = (itemId: string) => {
+  const handleDeleteClick = (item: KanbanItem) => {
+    setItemToDelete(item)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!itemToDelete) return
+
     setLocalItems((items) => {
-      const updated = items.filter((item) => item.id !== itemId)
-      if (type === "instructions") {
-        updateAgent(agentId, { instructions: updated as AgentInstruction[] })
-      } else if (type === "limitacoes") {
-        updateAgent(agentId, { limitations: updated as AgentLimitation[] })
-      } else {
-        updateAgent(agentId, { conversationRoteiro: updated as AgentConversationRoteiro[] })
-      }
+      const updated = items.filter((item) => item.id !== itemToDelete.id)
+      saveItems(updated)
       return updated
     })
     toast({
       title: "Item excluído",
       description: "O item foi excluído com sucesso.",
     })
+    setDeleteModalOpen(false)
+    setItemToDelete(null)
+  }
+
+  const handleEditClick = (item: KanbanItem) => {
+    setSelectedItem(item)
+    setAddEditModalOpen(true)
+  }
+
+  const handleAddClick = () => {
+    setSelectedItem(null)
+    setAddEditModalOpen(true)
+  }
+
+  const handleSaveItem = (data: { title: string; description?: string; mainInstruction?: string }) => {
+    if (selectedItem) {
+      // Editar item existente
+      setLocalItems((items) => {
+        const updated = items.map((item) =>
+          item.id === selectedItem.id
+            ? {
+                ...item,
+                title: data.title,
+                ...(type === "roteiro"
+                  ? { mainInstruction: data.mainInstruction || "" }
+                  : { description: data.description || "" }),
+              }
+            : item
+        )
+        saveItems(updated)
+        return updated
+      })
+      toast({
+        title: "Item atualizado",
+        description: "O item foi atualizado com sucesso.",
+      })
+    } else {
+      // Adicionar novo item
+      const newItem: KanbanItem = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        title: data.title,
+        isActive: true,
+        order: localItems.length,
+        ...(type === "roteiro"
+          ? { mainInstruction: data.mainInstruction || "", subTasks: null }
+          : { description: data.description || "" }),
+      } as KanbanItem
+
+      setLocalItems((items) => {
+        const updated = [...items, newItem]
+        saveItems(updated)
+        return updated
+      })
+      toast({
+        title: "Item adicionado",
+        description: "O item foi adicionado com sucesso.",
+      })
+    }
+    setAddEditModalOpen(false)
+    setSelectedItem(null)
   }
 
   const handleMoveUp = (itemId: string) => {
@@ -211,13 +300,7 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
       const newItems = [...items]
       ;[newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]]
       const updated = newItems.map((item, idx) => ({ ...item, order: idx }))
-      if (type === "instructions") {
-        updateAgent(agentId, { instructions: updated as AgentInstruction[] })
-      } else if (type === "limitacoes") {
-        updateAgent(agentId, { limitations: updated as AgentLimitation[] })
-      } else {
-        updateAgent(agentId, { conversationRoteiro: updated as AgentConversationRoteiro[] })
-      }
+      saveItems(updated)
       return updated
     })
   }
@@ -229,28 +312,31 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
       const newItems = [...items]
       ;[newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]
       const updated = newItems.map((item, idx) => ({ ...item, order: idx }))
-      if (type === "instructions") {
-        updateAgent(agentId, { instructions: updated as AgentInstruction[] })
-      } else if (type === "limitacoes") {
-        updateAgent(agentId, { limitations: updated as AgentLimitation[] })
-      } else {
-        updateAgent(agentId, { conversationRoteiro: updated as AgentConversationRoteiro[] })
-      }
+      saveItems(updated)
       return updated
     })
+  }
+
+  const getTitle = () => {
+    switch (type) {
+      case "instructions":
+        return "Instruções"
+      case "limitacoes":
+        return "Limitações"
+      case "roteiro":
+        return "Roteiro de Conversa"
+      case "outras":
+        return "Outras Instruções"
+      default:
+        return "Itens"
+    }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">
-          {type === "instructions"
-            ? "Instruções"
-            : type === "limitacoes"
-            ? "Limitações"
-            : "Roteiro"}
-        </h3>
-        <Button size="sm">
+        <h3 className="font-semibold">{getTitle()}</h3>
+        <Button size="sm" onClick={handleAddClick}>
           <Plus className="h-4 w-4 mr-2" />
           Adicionar
         </Button>
@@ -263,8 +349,12 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
       >
         <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {localItems.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Nenhum item cadastrado</p>
+            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+              <p className="text-muted-foreground mb-4">Nenhum item cadastrado</p>
+              <Button size="sm" onClick={handleAddClick}>
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Primeiro Item
+              </Button>
             </div>
           ) : (
             localItems.map((item, index) => (
@@ -273,14 +363,8 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
                 item={item}
                 index={index}
                 onToggle={() => handleToggle(item.id)}
-                onDelete={() => handleDelete(item.id)}
-                onEdit={() => {
-                  // Implementar edição depois
-                  toast({
-                    title: "Em desenvolvimento",
-                    description: "A edição de itens será implementada em breve.",
-                  })
-                }}
+                onDelete={() => handleDeleteClick(item)}
+                onEdit={() => handleEditClick(item)}
                 canMoveUp={index > 0}
                 canMoveDown={index < localItems.length - 1}
                 onMoveUp={() => handleMoveUp(item.id)}
@@ -290,7 +374,23 @@ export function KanbanBoard({ items, type, agentId }: KanbanBoardProps) {
           )}
         </SortableContext>
       </DndContext>
+
+      {/* Modal de Adicionar/Editar */}
+      <AddEditItemModal
+        open={addEditModalOpen}
+        onOpenChange={setAddEditModalOpen}
+        item={selectedItem}
+        type={type}
+        onSave={handleSaveItem}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={handleDeleteConfirm}
+        title={itemToDelete?.title || ""}
+      />
     </div>
   )
 }
-
