@@ -32,11 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) {
+        // Se for erro de permissão RLS, pode ser que o usuário ainda não tenha o perfil criado
+        // Ou que a política RLS não esteja configurada corretamente
         console.error("Erro ao buscar perfil do usuário:", error)
+        // Não lançar erro, apenas retornar null para não bloquear o fluxo
         return null
       }
 
       if (!data) {
+        console.warn("Perfil do usuário não encontrado na tabela public.users")
         return null
       }
 
@@ -55,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: data.created_at || new Date().toISOString(),
       }
     } catch (error) {
-      console.error("Erro ao buscar perfil do usuário:", error)
+      console.error("Exceção ao buscar perfil do usuário:", error)
       return null
     }
   }, [supabase])
@@ -84,16 +88,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Timeout de segurança para garantir que o loading sempre seja desativado
     loadingTimeout = setTimeout(() => {
       if (isMounted) {
+        console.warn("Timeout de segurança: desativando loading após 3 segundos")
         setIsLoadingAuth(false)
       }
-    }, 5000) // Máximo 5 segundos de loading
+    }, 3000) // Máximo 3 segundos de loading
 
     // Verificar sessão inicial
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (!isMounted) return
+
+        if (sessionError) {
+          console.error("Erro ao obter sessão:", sessionError)
+          if (isMounted) {
+            setUser(null)
+            setIsLoadingAuth(false)
+          }
+          return
+        }
 
         if (session?.user) {
           const userProfile = await fetchUserProfile(session.user.id)

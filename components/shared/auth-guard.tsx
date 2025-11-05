@@ -48,7 +48,7 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     }
   }, [user, isLoadingAuth, allowedRoles, router, pathname])
 
-  // Mostrar loading enquanto verifica autenticação
+  // Mostrar loading enquanto verifica autenticação (com timeout de segurança)
   if (isLoadingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -57,8 +57,13 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     )
   }
 
-  // Se não está logado ou não tem permissão, não renderizar children
-  if (!user || (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role))) {
+  // Se não está logado, não renderizar children (o redirecionamento já foi feito no useEffect)
+  if (!user) {
+    return null
+  }
+
+  // Se há roles permitidas e o usuário não tem permissão, não renderizar children
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return null
   }
 
