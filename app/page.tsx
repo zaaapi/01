@@ -1,28 +1,14 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/contexts/auth-context"
 
 export default function Home() {
-  const router = useRouter()
   const { user, isLoadingAuth } = useAuth()
 
-  useEffect(() => {
-    if (!isLoadingAuth && user) {
-      // Se já está logado, redirecionar para o dashboard apropriado
-      if (user.role === "super_admin") {
-        router.replace("/super-admin")
-      } else if (user.role === "usuario_cliente") {
-        router.replace("/cliente")
-      }
-    }
-  }, [user, isLoadingAuth, router])
-
-  // Se está carregando ou já logado, não renderizar nada (evitar flash de conteúdo)
+  // Se está carregando ou já logado, não renderizar nada (o AuthContext vai redirecionar automaticamente)
   if (isLoadingAuth || user) {
     return null
   }

@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -21,21 +20,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const router = useRouter()
   const { signIn, isLoadingAuth, user } = useAuth()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Redirecionar se já estiver logado (sem mostrar loading)
-  useEffect(() => {
-    if (!isLoadingAuth && user) {
-      if (user.role === "super_admin") {
-        router.replace("/super-admin")
-      } else if (user.role === "usuario_cliente") {
-        router.replace("/cliente")
-      }
-    }
-  }, [user, isLoadingAuth, router])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -49,7 +36,7 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true)
       await signIn(data.email, data.password)
-      // O redirecionamento será feito automaticamente pelo AuthContext sem mostrar loading
+      // O redirecionamento será feito automaticamente pelo AuthContext via onAuthStateChange
     } catch (error) {
       toast({
         title: "Erro ao fazer login",
@@ -61,7 +48,7 @@ export default function LoginPage() {
     }
   }
 
-  // Se já está logado, não renderizar nada (o useEffect vai redirecionar)
+  // Se já está logado, não renderizar nada (o AuthContext vai redirecionar automaticamente)
   if (user) {
     return null
   }

@@ -23,6 +23,12 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
       return
     }
 
+    // Verificar se o usuário está ativo
+    if (!user.isActive) {
+      router.replace("/login")
+      return
+    }
+
     // Se há roles permitidas e o usuário não tem permissão
     if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
       // Redirecionar para o dashboard apropriado baseado na role do usuário
@@ -55,6 +61,11 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
 
   // Se não está logado, não renderizar children (o redirecionamento já foi feito no useEffect)
   if (!user) {
+    return null
+  }
+
+  // Se o usuário está inativo, não renderizar children (o redirecionamento já foi feito no useEffect)
+  if (!user.isActive) {
     return null
   }
 

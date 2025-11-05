@@ -58,3 +58,4 @@ export async function getCurrentUserTenantId() {
   const userProfile = await getCurrentUserWithProfile();
   return userProfile?.tenant_id ?? null;
 }
+

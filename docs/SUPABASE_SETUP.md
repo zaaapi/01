@@ -122,3 +122,4 @@ Verifique se:
 ### Erro ao criar cliente no servidor
 
 Certifique-se de usar `createSupabaseServerClient()` em Server Components/Actions e `createSupabaseClient()` em Client Components.
+

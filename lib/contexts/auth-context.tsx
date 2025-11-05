@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
   const router = useRouter()
   const supabase = createSupabaseClient()
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Função para buscar perfil completo do usuário em public.users
   const fetchUserProfile = useCallback(async (userId: string): Promise<User | null> => {
@@ -66,27 +67,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função para redirecionar baseado na role do usuário
   const redirectByRole = useCallback((userRole: UserRole) => {
-    if (typeof window === "undefined") return
-    
     const targetPath = userRole === "super_admin" ? "/super-admin" : "/cliente"
-    const currentPath = window.location.pathname
     
-    // Verificar se já estamos na rota correta
-    if (currentPath.startsWith(targetPath)) {
-      return // Já está na rota correta
-    }
-    
-    // Usar window.location.href para garantir o redirecionamento
-    window.location.href = targetPath
-  }, [])
+    // Usar router.replace() para navegação SPA (sem recarregar página)
+    router.replace(targetPath)
+  }, [router])
 
   // Escutar mudanças de autenticação
   useEffect(() => {
     let isMounted = true
-    let loadingTimeout: NodeJS.Timeout | null = null
 
     // Timeout de segurança para garantir que o loading sempre seja desativado
-    loadingTimeout = setTimeout(() => {
+    loadingTimeoutRef.current = setTimeout(() => {
       if (isMounted) {
         console.warn("Timeout de segurança: desativando loading após 3 segundos")
         setIsLoadingAuth(false)
@@ -112,10 +104,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           const userProfile = await fetchUserProfile(session.user.id)
           if (isMounted) {
+            // Verificar se o usuário tem perfil e está ativo
+            if (!userProfile) {
+              console.error("Perfil do usuário não encontrado na sessão inicial")
+              setUser(null)
+              setIsLoadingAuth(false)
+              return
+            }
+
+            // Verificar se o usuário está ativo
+            if (!userProfile.isActive) {
+              console.warn("Usuário inativo na sessão inicial")
+              await supabase.auth.signOut()
+              setUser(null)
+              setIsLoadingAuth(false)
+              return
+            }
+
             setUser(userProfile)
             
             // Se o usuário está na página de login/signup e já está autenticado, redirecionar
-            if (userProfile && typeof window !== "undefined") {
+            if (typeof window !== "undefined") {
               const currentPath = window.location.pathname
               if (currentPath === "/login" || currentPath === "/signup") {
                 redirectByRole(userProfile.role)
@@ -133,9 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null)
         }
       } finally {
-        if (loadingTimeout) {
-          clearTimeout(loadingTimeout)
-          loadingTimeout = null
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current)
+          loadingTimeoutRef.current = null
         }
         if (isMounted) {
           setIsLoadingAuth(false)
@@ -152,20 +161,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return
 
       // Limpar timeout de segurança quando há mudança de autenticação
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout)
-        loadingTimeout = null
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
       }
 
       if (event === "SIGNED_IN" && session?.user) {
         const userProfile = await fetchUserProfile(session.user.id)
         if (isMounted) {
+          // Verificar se o usuário tem perfil e está ativo
+          if (!userProfile) {
+            console.error("Perfil do usuário não encontrado após login")
+            // Fazer logout se o perfil não foi encontrado
+            await supabase.auth.signOut()
+            setUser(null)
+            router.replace("/login")
+            return
+          }
+
+          // Verificar se o usuário está ativo
+          if (!userProfile.isActive) {
+            console.warn("Usuário inativo tentando fazer login")
+            // Fazer logout se o usuário está inativo
+            await supabase.auth.signOut()
+            setUser(null)
+            router.replace("/login")
+            return
+          }
+
           setUser(userProfile)
 
           // Redirecionar baseado na role
-          if (userProfile) {
-            redirectByRole(userProfile.role)
-          }
+          redirectByRole(userProfile.role)
         }
       } else if (event === "SIGNED_OUT") {
         if (isMounted) {
@@ -176,6 +203,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Atualizar perfil quando o token é renovado
         const userProfile = await fetchUserProfile(session.user.id)
         if (isMounted) {
+          // Verificar se o usuário tem perfil e está ativo
+          if (!userProfile || !userProfile.isActive) {
+            console.warn("Usuário sem perfil ou inativo durante refresh do token")
+            await supabase.auth.signOut()
+            setUser(null)
+            router.replace("/login")
+            return
+          }
           setUser(userProfile)
         }
       } else if (event === "INITIAL_SESSION") {
@@ -190,8 +225,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout)
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
       }
       subscription.unsubscribe()
     }
@@ -208,34 +244,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error
       }
 
-      // Buscar perfil imediatamente após login bem-sucedido
-      if (data.user) {
+      // Verificar se o usuário tem perfil e está ativo após login bem-sucedido
+      if (data?.user) {
         const userProfile = await fetchUserProfile(data.user.id)
-        setUser(userProfile)
         
-        // Redirecionar imediatamente após buscar o perfil
-        if (userProfile) {
-          redirectByRole(userProfile.role)
-        } else {
-          // Se o perfil não foi encontrado, tentar novamente após um delay
-          // Isso pode acontecer se o trigger ainda não executou
-          setTimeout(() => {
-            const retryProfile = async () => {
-              const retry = await fetchUserProfile(data.user.id)
-              if (retry) {
-                setUser(retry)
-                redirectByRole(retry.role)
-              }
-            }
-            retryProfile()
-          }, 1000)
+        if (!userProfile) {
+          // Fazer logout se o perfil não foi encontrado
+          await supabase.auth.signOut()
+          throw new Error("Perfil do usuário não encontrado. Entre em contato com o suporte.")
+        }
+
+        if (!userProfile.isActive) {
+          // Fazer logout se o usuário está inativo
+          await supabase.auth.signOut()
+          throw new Error("Sua conta está inativa. Entre em contato com o administrador.")
         }
       }
+
+      // O redirecionamento será feito automaticamente pelo onAuthStateChange
+      // quando o evento SIGNED_IN for disparado
     } catch (error) {
       const authError = error as AuthError
+      // Se já é um Error, usar a mensagem existente
+      if (error instanceof Error) {
+        throw error
+      }
       throw new Error(authError.message || "Erro ao fazer login")
     }
-  }, [supabase, fetchUserProfile, redirectByRole])
+  }, [supabase, fetchUserProfile])
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     try {
@@ -269,13 +305,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error
       }
 
-      setUser(null)
-      router.replace("/login")
+      // O redirecionamento será feito automaticamente pelo onAuthStateChange
+      // quando o evento SIGNED_OUT for disparado
+      // Não precisamos fazer nada aqui além de garantir que o logout foi bem-sucedido
     } catch (error) {
       const authError = error as AuthError
       throw new Error(authError.message || "Erro ao fazer logout")
     }
-  }, [supabase, router])
+  }, [supabase])
 
   return (
     <AuthContext.Provider
