@@ -269,15 +269,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isActive: t.is_active ?? true,
         cnpj: t.cnpj || "",
         phone: t.phone || "",
-        responsibleTech: t.responsible_tech || {
-          name: "",
-          whatsapp: "",
-          email: "",
+        responsibleTech: {
+          name: t.responsible_tech_name || "",
+          whatsapp: t.responsible_tech_whatsapp || "",
+          email: t.responsible_tech_email || "",
         },
-        responsibleFinance: t.responsible_finance || {
-          name: "",
-          whatsapp: "",
-          email: "",
+        responsibleFinance: {
+          name: t.responsible_finance_name || "",
+          whatsapp: t.responsible_finance_whatsapp || "",
+          email: t.responsible_finance_email || "",
         },
         plan: t.plan || "Basic",
         createdAt: t.created_at || new Date().toISOString(),
@@ -299,8 +299,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         is_active: tenant.isActive,
         cnpj: tenant.cnpj,
         phone: tenant.phone,
-        responsible_tech: tenant.responsibleTech,
-        responsible_finance: tenant.responsibleFinance,
+        responsible_tech_name: tenant.responsibleTech.name,
+        responsible_tech_whatsapp: tenant.responsibleTech.whatsapp,
+        responsible_tech_email: tenant.responsibleTech.email,
+        responsible_finance_name: tenant.responsibleFinance.name,
+        responsible_finance_whatsapp: tenant.responsibleFinance.whatsapp,
+        responsible_finance_email: tenant.responsibleFinance.email,
         plan: tenant.plan,
         master_integration_url: (tenant as any).masterIntegrationUrl || null,
         master_integration_active: (tenant as any).masterIntegrationActive ?? false,
@@ -331,8 +335,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive
       if (updates.cnpj !== undefined) updateData.cnpj = updates.cnpj
       if (updates.phone !== undefined) updateData.phone = updates.phone
-      if (updates.responsibleTech !== undefined) updateData.responsible_tech = updates.responsibleTech
-      if (updates.responsibleFinance !== undefined) updateData.responsible_finance = updates.responsibleFinance
+      if (updates.responsibleTech !== undefined) {
+        updateData.responsible_tech_name = updates.responsibleTech.name
+        updateData.responsible_tech_whatsapp = updates.responsibleTech.whatsapp
+        updateData.responsible_tech_email = updates.responsibleTech.email
+      }
+      if (updates.responsibleFinance !== undefined) {
+        updateData.responsible_finance_name = updates.responsibleFinance.name
+        updateData.responsible_finance_whatsapp = updates.responsibleFinance.whatsapp
+        updateData.responsible_finance_email = updates.responsibleFinance.email
+      }
       if (updates.plan !== undefined) updateData.plan = updates.plan
       if ((updates as any).masterIntegrationUrl !== undefined) updateData.master_integration_url = (updates as any).masterIntegrationUrl
       if ((updates as any).masterIntegrationActive !== undefined) updateData.master_integration_active = (updates as any).masterIntegrationActive
@@ -724,15 +736,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isActive: data.is_active ?? true,
         cnpj: data.cnpj || "",
         phone: data.phone || "",
-        responsibleTech: data.responsible_tech || {
-          name: "",
-          whatsapp: "",
-          email: "",
+        responsibleTech: {
+          name: data.responsible_tech_name || "",
+          whatsapp: data.responsible_tech_whatsapp || "",
+          email: data.responsible_tech_email || "",
         },
-        responsibleFinance: data.responsible_finance || {
-          name: "",
-          whatsapp: "",
-          email: "",
+        responsibleFinance: {
+          name: data.responsible_finance_name || "",
+          whatsapp: data.responsible_finance_whatsapp || "",
+          email: data.responsible_finance_email || "",
         },
         plan: data.plan || "Basic",
         createdAt: data.created_at || new Date().toISOString(),
@@ -779,8 +791,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (data.name !== undefined) updateData.name = data.name
       if (data.cnpj !== undefined) updateData.cnpj = data.cnpj
       if (data.phone !== undefined) updateData.phone = data.phone
-      if (data.responsibleTech !== undefined) updateData.responsible_tech = data.responsibleTech
-      if (data.responsibleFinance !== undefined) updateData.responsible_finance = data.responsibleFinance
+      if (data.responsibleTech !== undefined) {
+        updateData.responsible_tech_name = data.responsibleTech.name
+        updateData.responsible_tech_whatsapp = data.responsibleTech.whatsapp
+        updateData.responsible_tech_email = data.responsibleTech.email
+      }
+      if (data.responsibleFinance !== undefined) {
+        updateData.responsible_finance_name = data.responsibleFinance.name
+        updateData.responsible_finance_whatsapp = data.responsibleFinance.whatsapp
+        updateData.responsible_finance_email = data.responsibleFinance.email
+      }
 
       const { error } = await supabase
         .from("tenants")
