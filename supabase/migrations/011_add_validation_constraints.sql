@@ -63,3 +63,4 @@ COMMENT ON CONSTRAINT check_phone_format ON public.tenants IS 'Valida formato de
 COMMENT ON CONSTRAINT check_email_format ON public.users IS 'Valida formato básico de email';
 COMMENT ON CONSTRAINT check_cpf_format ON public.contacts IS 'Valida formato básico de CPF (XXX.XXX.XXX-XX)';
 
+

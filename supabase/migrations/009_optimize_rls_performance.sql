@@ -68,3 +68,4 @@ COMMENT ON INDEX idx_tenants_neurocore_id_tenant_id IS 'Índice para otimizar po
 COMMENT ON INDEX idx_agents_associated_neurocores_gin IS 'Índice GIN para busca eficiente em array de neurocores associados';
 COMMENT ON INDEX idx_conversations_tenant_id_id IS 'Índice para otimizar política RLS de messages';
 
+

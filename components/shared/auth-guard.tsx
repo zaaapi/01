@@ -1,79 +1,52 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/lib/contexts/auth-context"
+import { LoadingScreen } from "@/components/shared/loading-screen"
 
 interface AuthGuardProps {
   children: React.ReactNode
   allowedRoles?: ("super_admin" | "usuario_cliente")[]
 }
 
+/**
+ * AuthGuard
+ * 
+ * Componente de proteção de rotas no cliente (Camada 2 de Defesa).
+ * Complementa o Middleware (Camada 1) garantindo sincronização com AuthContext.
+ * 
+ * Responsabilidades:
+ * - Gerenciar estados de loading (isLoadingAuth)
+ * - Garantir que user está disponível antes de renderizar
+ * - Verificar permissões de role como backup de segurança
+ * - Prevenir race conditions entre middleware e AuthContext
+ * 
+ * Nota: O Middleware já faz redirecionamentos. Este componente foca em UX
+ * e sincronização com o estado do AuthContext.
+ */
 export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const { user, isLoadingAuth } = useAuth()
-  const router = useRouter()
-  const pathname = usePathname()
 
-  useEffect(() => {
-    if (isLoadingAuth) return
-
-    // Se não está logado, redirecionar para login
-    if (!user) {
-      router.replace("/login")
-      return
-    }
-
-    // Verificar se o usuário está ativo
-    if (!user.isActive) {
-      router.replace("/login")
-      return
-    }
-
-    // Se há roles permitidas e o usuário não tem permissão
-    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-      // Redirecionar para o dashboard apropriado baseado na role do usuário
-      if (user.role === "super_admin") {
-        router.replace("/super-admin")
-      } else if (user.role === "usuario_cliente") {
-        router.replace("/cliente")
-      } else {
-        router.replace("/login")
-      }
-      return
-    }
-
-    // Proteção de rotas específicas por role
-    if (pathname.startsWith("/super-admin") && user.role !== "super_admin") {
-      router.replace("/cliente")
-      return
-    }
-
-    if (pathname.startsWith("/cliente") && user.role !== "usuario_cliente") {
-      router.replace("/super-admin")
-      return
-    }
-  }, [user, isLoadingAuth, allowedRoles, router, pathname])
-
-  // Se ainda está carregando, não renderizar nada (evitar flash de loading)
+  // Mostrar loading enquanto o AuthContext está carregando
   if (isLoadingAuth) {
-    return null
+    return <LoadingScreen />
   }
 
-  // Se não está logado, não renderizar children (o redirecionamento já foi feito no useEffect)
+  // Se não há usuário (middleware já redirecionou, mas protege contra race condition)
   if (!user) {
-    return null
+    return <LoadingScreen />
   }
 
-  // Se o usuário está inativo, não renderizar children (o redirecionamento já foi feito no useEffect)
+  // Verificar se o usuário está ativo (backup de segurança)
   if (!user.isActive) {
-    return null
+    return <LoadingScreen />
   }
 
-  // Se há roles permitidas e o usuário não tem permissão, não renderizar children
+  // Verificar permissões de role (backup de segurança - middleware já validou)
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return null
+    return <LoadingScreen />
   }
 
+  // Tudo OK, renderizar conteúdo protegido
   return <>{children}</>
 }
 
