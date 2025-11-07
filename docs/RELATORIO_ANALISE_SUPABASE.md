@@ -186,8 +186,8 @@ No arquivo `app/super-admin/empresas/page.tsx` (linhas 88-115), há um padrão N
 
 ```typescript
 for (const tenant of tenants) {
-  const tenantUsers = await fetchUsersByTenant(tenant.id);
-  allUsers.push(...tenantUsers);
+  const tenantUsers = await fetchUsersByTenant(tenant.id)
+  allUsers.push(...tenantUsers)
 }
 ```
 
@@ -201,15 +201,15 @@ Se houver 10 tenants, isso executa 11 queries (1 para tenants + 10 para users).
 // Em data-provider.tsx, criar função otimizada
 const fetchAllUsers = useCallback(async (): Promise<User[]> => {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = createSupabaseClient()
     const { data, error } = await supabase
       .from("users")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Erro ao buscar usuários:", error);
-      return [];
+      console.error("Erro ao buscar usuários:", error)
+      return []
     }
 
     return (
@@ -218,15 +218,15 @@ const fetchAllUsers = useCallback(async (): Promise<User[]> => {
         tenantId: u.tenant_id || null,
         // ... resto do mapeamento
       })) || []
-    );
+    )
   } catch (error) {
-    console.error("Exceção ao buscar usuários:", error);
-    return [];
+    console.error("Exceção ao buscar usuários:", error)
+    return []
   }
-}, []);
+}, [])
 
 // No componente, usar uma única query
-const allUsers = await fetchAllUsers();
+const allUsers = await fetchAllUsers()
 ```
 
 ---
@@ -296,45 +296,42 @@ const fetchTenants = useCallback(
     options?: { limit?: number; offset?: number }
   ): Promise<{ data: Tenant[]; total: number }> => {
     try {
-      const supabase = createSupabaseClient();
-      let query = supabase.from("tenants").select("*", { count: "exact" });
+      const supabase = createSupabaseClient()
+      let query = supabase.from("tenants").select("*", { count: "exact" })
 
       if (filter === "active") {
-        query = query.eq("is_active", true);
+        query = query.eq("is_active", true)
       } else if (filter === "inactive") {
-        query = query.eq("is_active", false);
+        query = query.eq("is_active", false)
       }
 
       if (options?.limit) {
-        query = query.limit(options.limit);
+        query = query.limit(options.limit)
       }
       if (options?.offset) {
-        query = query.range(
-          options.offset,
-          options.offset + (options.limit || 10) - 1
-        );
+        query = query.range(options.offset, options.offset + (options.limit || 10) - 1)
       }
 
       const { data, error, count } = await query.order("created_at", {
         ascending: false,
-      });
+      })
 
       if (error) {
-        console.error("Erro ao buscar tenants:", error);
-        return { data: [], total: 0 };
+        console.error("Erro ao buscar tenants:", error)
+        return { data: [], total: 0 }
       }
 
       return {
         data: data?.map(/* ... */) || [],
         total: count || 0,
-      };
+      }
     } catch (error) {
-      console.error("Exceção ao buscar tenants:", error);
-      return { data: [], total: 0 };
+      console.error("Exceção ao buscar tenants:", error)
+      return { data: [], total: 0 }
     }
   },
   []
-);
+)
 ```
 
 ---
@@ -373,33 +370,26 @@ O `data-provider.tsx` mantém estado duplicado:
 // Manter localStorage apenas para configurações de UI (filtros, preferências)
 
 // Refatorar data-provider para usar apenas Supabase quando autenticado
-const createTenant = useCallback(
-  async (tenant: Omit<Tenant, "id" | "createdAt">) => {
-    try {
-      const supabase = createSupabaseClient();
+const createTenant = useCallback(async (tenant: Omit<Tenant, "id" | "createdAt">) => {
+  try {
+    const supabase = createSupabaseClient()
 
-      const { data, error } = await supabase
-        .from("tenants")
-        .insert(insertData)
-        .select()
-        .single();
+    const { data, error } = await supabase.from("tenants").insert(insertData).select().single()
 
-      if (error) {
-        throw new Error(`Erro ao criar tenant: ${error.message}`);
-      }
-
-      // Atualizar apenas o estado React (não localStorage)
-      setState((prev) => ({
-        ...prev,
-        tenants: [...prev.tenants, mappedTenant],
-      }));
-    } catch (error) {
-      console.error("Erro ao criar tenant:", error);
-      throw error;
+    if (error) {
+      throw new Error(`Erro ao criar tenant: ${error.message}`)
     }
-  },
-  []
-);
+
+    // Atualizar apenas o estado React (não localStorage)
+    setState((prev) => ({
+      ...prev,
+      tenants: [...prev.tenants, mappedTenant],
+    }))
+  } catch (error) {
+    console.error("Erro ao criar tenant:", error)
+    throw error
+  }
+}, [])
 ```
 
 ---
@@ -416,21 +406,21 @@ Algumas funções retornam arrays vazios em caso de erro, outras lançam exceç�
 ```typescript
 // Criar helper centralizado para tratamento de erros
 const handleSupabaseError = (error: any, context: string) => {
-  console.error(`Erro em ${context}:`, error);
+  console.error(`Erro em ${context}:`, error)
 
   // Mapear erros comuns para mensagens amigáveis
   if (error.code === "PGRST116") {
-    throw new Error("Recurso não encontrado");
+    throw new Error("Recurso não encontrado")
   }
   if (error.code === "42501") {
-    throw new Error("Você não tem permissão para realizar esta ação");
+    throw new Error("Você não tem permissão para realizar esta ação")
   }
   if (error.code === "23505") {
-    throw new Error("Este registro já existe");
+    throw new Error("Este registro já existe")
   }
 
-  throw new Error(error.message || "Erro desconhecido");
-};
+  throw new Error(error.message || "Erro desconhecido")
+}
 
 // Usar em todas as funções
 const fetchTenants = useCallback(
@@ -438,15 +428,15 @@ const fetchTenants = useCallback(
     try {
       // ... código da query
       if (error) {
-        handleSupabaseError(error, "fetchTenants");
+        handleSupabaseError(error, "fetchTenants")
       }
       // ...
     } catch (error) {
-      handleSupabaseError(error, "fetchTenants");
+      handleSupabaseError(error, "fetchTenants")
     }
   },
   []
-);
+)
 ```
 
 ---
@@ -462,33 +452,28 @@ Dados são enviados para Supabase sem validação Zod no frontend antes do envio
 
 ```typescript
 // Criar schemas Zod para validação
-import { z } from "zod";
+import { z } from "zod"
 
 const tenantSchema = z.object({
   name: z.string().min(3).max(255),
   cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/),
   phone: z.string().regex(/^\+55\s\d{2}\s\d{4,5}-\d{4}$/),
   // ... outros campos
-});
+})
 
-const createTenant = useCallback(
-  async (tenant: Omit<Tenant, "id" | "createdAt">) => {
-    // Validar antes de enviar
-    const validated = tenantSchema.parse(tenant);
+const createTenant = useCallback(async (tenant: Omit<Tenant, "id" | "createdAt">) => {
+  // Validar antes de enviar
+  const validated = tenantSchema.parse(tenant)
 
-    try {
-      // ... resto do código
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error(
-          `Dados inválidos: ${error.errors.map((e) => e.message).join(", ")}`
-        );
-      }
-      throw error;
+  try {
+    // ... resto do código
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new Error(`Dados inválidos: ${error.errors.map((e) => e.message).join(", ")}`)
     }
-  },
-  []
-);
+    throw error
+  }
+}, [])
 ```
 
 ---
@@ -526,8 +511,8 @@ Não foi encontrado código de integração com N8N no projeto. As funcionalidad
 
 ```typescript
 // Criar lib/n8n/client.ts
-const N8N_BASE_URL = process.env.NEXT_PUBLIC_N8N_BASE_URL!;
-const N8N_API_KEY = process.env.NEXT_PUBLIC_N8N_API_KEY!;
+const N8N_BASE_URL = process.env.NEXT_PUBLIC_N8N_BASE_URL!
+const N8N_API_KEY = process.env.NEXT_PUBLIC_N8N_API_KEY!
 
 export async function callN8NWorkflow(
   workflowId: string,
@@ -542,38 +527,38 @@ export async function callN8NWorkflow(
       ...(N8N_API_KEY && { "X-N8N-API-KEY": N8N_API_KEY }),
     },
     body: JSON.stringify(data),
-  });
+  })
 
   if (!response.ok) {
-    throw new Error(`Erro ao chamar workflow N8N: ${response.statusText}`);
+    throw new Error(`Erro ao chamar workflow N8N: ${response.statusText}`)
   }
 
-  return response.json();
+  return response.json()
 }
 
 // Criar app/api/n8n/send-message/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/db";
-import { callN8NWorkflow } from "@/lib/n8n/client";
+import { NextRequest, NextResponse } from "next/server"
+import { createSupabaseServerClient } from "@/db"
+import { callN8NWorkflow } from "@/lib/n8n/client"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerClient()
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     }
 
-    const body = await request.json();
-    const { conversationId, message } = body;
+    const body = await request.json()
+    const { conversationId, message } = body
 
     // Validar dados
     if (!conversationId || !message) {
-      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 })
     }
 
     // Chamar workflow N8N
@@ -585,15 +570,12 @@ export async function POST(request: NextRequest) {
         userId: user.id,
       },
       request.headers.get("authorization") || undefined
-    );
+    )
 
-    return NextResponse.json(result);
+    return NextResponse.json(result)
   } catch (error) {
-    console.error("Erro ao enviar mensagem:", error);
-    return NextResponse.json(
-      { error: "Erro ao processar requisição" },
-      { status: 500 }
-    );
+    console.error("Erro ao enviar mensagem:", error)
+    return NextResponse.json({ error: "Erro ao processar requisição" }, { status: 500 })
   }
 }
 ```

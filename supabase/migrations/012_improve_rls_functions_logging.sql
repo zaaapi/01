@@ -97,3 +97,5 @@ COMMENT ON FUNCTION get_user_role() IS 'Obtém o role do usuário do JWT ou da t
 COMMENT ON FUNCTION get_user_tenant_id() IS 'Obtém o tenant_id do usuário do JWT ou da tabela public.users como fallback. Usa SECURITY DEFINER para evitar problemas circulares com RLS. Melhorado com tratamento de erros.';
 
 
+
+

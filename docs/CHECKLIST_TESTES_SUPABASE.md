@@ -361,19 +361,17 @@ Data: ___________
 Testador: ___________
 
 Problemas Encontrados:
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 Observações:
-- 
-- 
-- 
+-
+-
+-
 ```
 
 ---
 
 **Última Atualização**: 2024-12-19  
 **Versão**: 1.0
-
-

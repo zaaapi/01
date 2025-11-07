@@ -84,3 +84,5 @@ COMMENT ON INDEX idx_feedbacks_tenant_status_created IS 'Índice composto para o
 COMMENT ON INDEX idx_synapses_tenant_status IS 'Índice composto para otimizar listagem de synapses';
 
 
+
+

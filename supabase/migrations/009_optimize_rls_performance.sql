@@ -69,3 +69,5 @@ COMMENT ON INDEX idx_agents_associated_neurocores_gin IS 'Índice GIN para busca
 COMMENT ON INDEX idx_conversations_tenant_id_id IS 'Índice para otimizar política RLS de messages';
 
 
+
+

@@ -17,9 +17,11 @@ Este guia mostra passo a passo como obter as variáveis de ambiente necessárias
 3. Você verá duas seções importantes:
 
    **Project URL:**
+
    ```
    https://xxxxxxxxxxxxx.supabase.co
    ```
+
    - Esta é a `NEXT_PUBLIC_SUPABASE_URL`
    - Copie este valor completo
 
@@ -70,11 +72,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 ### Verificações Importantes:
 
 ✅ **NEXT_PUBLIC_SUPABASE_URL**:
+
 - Deve começar com `https://`
 - Deve terminar com `.supabase.co`
 - Exemplo: `https://abcdefghijklmnop.supabase.co`
 
 ✅ **NEXT_PUBLIC_SUPABASE_ANON_KEY**:
+
 - Deve ser uma string longa (JWT token)
 - Deve começar com `eyJ` (base64 encoded)
 - Deve ter aproximadamente 100-200 caracteres
@@ -104,16 +108,19 @@ Após criar/atualizar o arquivo `.env.local`:
 ## Troubleshooting
 
 ### Erro: "Missing Supabase environment variables"
+
 - ✅ Verifique se o arquivo `.env.local` existe na raiz do projeto
 - ✅ Verifique se os nomes das variáveis estão corretos (case-sensitive)
 - ✅ Reinicie o servidor de desenvolvimento
 
 ### Erro: "Invalid API key"
+
 - ✅ Verifique se copiou a chave completa (ela é muito longa)
 - ✅ Certifique-se de usar a chave `anon` `public`, não a `service_role`
 - ✅ Verifique se não há espaços extras ou quebras de linha
 
 ### Erro: "Failed to fetch"
+
 - ✅ Verifique se a URL está correta (deve terminar com `.supabase.co`)
 - ✅ Verifique se o projeto está ativo no Supabase Dashboard
 - ✅ Verifique sua conexão com a internet
@@ -151,4 +158,3 @@ Após configurar as variáveis de ambiente:
 2. ✅ Configure Authentication no Supabase Dashboard
 3. ✅ Teste o fluxo de signup/login
 4. ✅ Verifique se os custom claims estão sendo incluídos no JWT
-
