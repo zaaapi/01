@@ -1,13 +1,11 @@
 "use client"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Message, Conversation, MessageSenderType, FeedbackType } from "@/types"
+import { Message, Conversation, MessageSenderType } from "@/types"
 import { formatDateTime } from "@/lib/formatters"
-import { User, Bot, ThumbsUp, ThumbsDown } from "lucide-react"
+import { User, Bot } from "lucide-react"
 import { MessageFeedbackPopover } from "./message-feedback-popover"
 import { HighlightedText } from "./highlighted-text"
-import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 interface MessageListProps {
@@ -22,8 +20,6 @@ interface MessageListProps {
 export function MessageList({
   messages,
   selectedConversation,
-  tenantId,
-  currentUserId,
   searchQuery = "",
   highlightedMessageId = null,
 }: MessageListProps) {

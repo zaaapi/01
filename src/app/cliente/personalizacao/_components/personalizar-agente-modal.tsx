@@ -114,7 +114,7 @@ export function PersonalizarAgenteModal({
         title: "Configurações atualizadas",
         description: "As configurações gerais do agente foram atualizadas com sucesso.",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar as configurações.",
@@ -139,7 +139,7 @@ export function PersonalizarAgenteModal({
         title: "Persona e Comportamento atualizados",
         description: "A persona e comportamento do agente foram atualizados com sucesso.",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a persona e comportamento.",
@@ -185,7 +185,7 @@ export function PersonalizarAgenteModal({
       })
 
       onSave()
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível salvar as alterações.",

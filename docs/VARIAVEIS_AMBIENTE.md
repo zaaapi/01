@@ -160,3 +160,4 @@ NEXTAUTH_SECRET=outro_secret_seguro_aqui
 ---
 
 **Última atualização:** Novembro 2024
+

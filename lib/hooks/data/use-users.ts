@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchUsersByTenant,
   fetchUserById,
@@ -32,7 +32,7 @@ export function useUsers(tenantId: string) {
  * Hook para buscar usuário por ID
  */
 export function useUser(id: string) {
-  return useQuery<User, ApiError>({
+  return useQuery<User | null, ApiError>({
     queryKey: queryKeys.users.detail(id),
     queryFn: () => fetchUserById(id),
     enabled: !!id,
@@ -98,7 +98,7 @@ export function useUpdateUser() {
 
       return { previousUser, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousUser) {
         queryClient.setQueryData(queryKeys.users.detail(context.id), context.previousUser)
       }
@@ -136,7 +136,7 @@ export function useDeleteUser() {
       const previousUsers = queryClient.getQueryData(queryKeys.users.all)
       return { previousUsers, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousUsers) {
         queryClient.setQueryData(queryKeys.users.all, context.previousUsers)
       }

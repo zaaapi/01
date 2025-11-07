@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { Feedback } from "@/types"
 import { mapFeedbackFromDB, mapFeedbackToDB } from "./mappers"
 
-export interface CreateFeedbackDTO extends Omit<Feedback, "id" | "createdAt"> {}
-export interface UpdateFeedbackDTO extends Partial<Omit<Feedback, "id" | "createdAt">> {}
+export type CreateFeedbackDTO = Omit<Feedback, "id" | "createdAt">
+export type UpdateFeedbackDTO = Partial<Omit<Feedback, "id" | "createdAt">>
 
 /**
  * Buscar feedbacks por tenant

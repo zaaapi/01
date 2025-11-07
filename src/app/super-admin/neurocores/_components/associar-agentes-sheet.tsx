@@ -21,7 +21,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useData } from "@/lib/contexts/data-provider"
-import { NeuroCore, Agent, AgentType, AgentFunction } from "@/types"
+import { NeuroCore, Agent } from "@/types"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Bot, Plus, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -60,7 +60,7 @@ export function AssociarAgentesSheet({
         try {
           const fetchedAgents = await fetchAgents()
           setAgents(fetchedAgents)
-        } catch (error) {
+        } catch {
           console.error("Erro ao carregar agentes:", error)
           toast({
             title: "Erro",
@@ -124,7 +124,7 @@ export function AssociarAgentesSheet({
       })
 
       // O sheet permanece aberto para múltiplas seleções
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível adicionar o agente.",

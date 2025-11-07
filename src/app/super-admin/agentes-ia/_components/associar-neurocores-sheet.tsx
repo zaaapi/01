@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useData } from "@/lib/contexts/data-provider"
-import { Agent, NeuroCore } from "@/types"
+import { Agent } from "@/types"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Brain } from "lucide-react"
 

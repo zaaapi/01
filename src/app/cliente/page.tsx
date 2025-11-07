@@ -285,7 +285,7 @@ export default function ClienteDashboard() {
                 <>
                   <div className="text-2xl font-bold">
                     {
-                      state.baseConhecimentos.filter((b) => b.tenantId === tenantId && b.isActive)
+                      state.baseConhecimentos.filter((b: any) => b.tenantId === tenantId && b.isActive)
                         .length
                     }
                   </div>

@@ -2,9 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { QuickReplyTemplate } from "@/types"
 import { mapQuickReplyTemplateFromDB, mapQuickReplyTemplateToDB } from "./mappers"
 
-export interface CreateQuickReplyTemplateDTO extends Omit<QuickReplyTemplate, "id" | "createdAt"> {}
-export interface UpdateQuickReplyTemplateDTO
-  extends Partial<Omit<QuickReplyTemplate, "id" | "createdAt">> {}
+export type CreateQuickReplyTemplateDTO = Omit<QuickReplyTemplate, "id" | "createdAt">
+export type UpdateQuickReplyTemplateDTO = Partial<Omit<QuickReplyTemplate, "id" | "createdAt">>
 
 /**
  * Buscar quick replies por tenant

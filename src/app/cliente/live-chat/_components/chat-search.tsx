@@ -49,7 +49,7 @@ export function ChatSearch({
     setIsOpen(false)
     setQuery("")
     onSearch("")
-  }, [onSearch])
+  }, [onSearch, setIsOpen])
 
   if (!isOpen) {
     return (

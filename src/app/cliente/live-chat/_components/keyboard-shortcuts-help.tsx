@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Kbd } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
-import { Search, MessageSquare, Zap, ArrowDown, XCircle, Info } from "lucide-react"
+import { Search, MessageSquare, Zap, ArrowDown, Info } from "lucide-react"
 
 interface KeyboardShortcutsHelpProps {
   open: boolean

@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchMessagesByConversation,
   fetchMessageById,
@@ -31,7 +31,7 @@ export function useMessages(conversationId: string) {
  * Hook para buscar mensagem por ID
  */
 export function useMessage(id: string) {
-  return useQuery<Message, ApiError>({
+  return useQuery<Message | null, ApiError>({
     queryKey: queryKeys.messages.detail(id),
     queryFn: () => fetchMessageById(id),
     enabled: !!id,
@@ -70,7 +70,7 @@ export function useCreateMessage() {
 
       return { previousMessages, conversationId: newMessage.conversationId }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousMessages) {
         queryClient.setQueryData(
           queryKeys.messages.list(context.conversationId),
@@ -112,7 +112,7 @@ export function useUpdateMessage() {
 
       return { previousMessage, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousMessage) {
         queryClient.setQueryData(queryKeys.messages.detail(context.id), context.previousMessage)
       }
@@ -150,7 +150,7 @@ export function useDeleteMessage() {
       const previousMessages = queryClient.getQueryData(queryKeys.messages.all)
       return { previousMessages, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousMessages) {
         queryClient.setQueryData(queryKeys.messages.all, context.previousMessages)
       }

@@ -9,9 +9,7 @@ import { createContext, useContext, ReactNode } from "react"
  * TODO: Remover este arquivo após migrar todos os componentes para React Query hooks
  */
 
-interface DataContextType {
-  // Stub vazio - os componentes devem migrar para hooks React Query
-}
+type DataContextType = Record<string, never>
 
 const DataContext = createContext<DataContextType | null>(null)
 
@@ -30,6 +28,29 @@ export function useData() {
     console.warn("useData is deprecated. Please use React Query hooks from lib/hooks/data instead.")
   }
 
-  // Retorna objeto vazio - componentes devem migrar para React Query
-  return {}
+  // Retorna stubs temporários para permitir build
+  // TODO: Remover após migrar todos componentes para React Query
+  return {
+    // Stubs para compatibilidade temporária
+    fetchBaseConhecimentos: async () => [],
+    fetchSynapsesByBase: async () => [],
+    createBaseConhecimento: async () => ({}),
+    updateBaseConhecimento: async () => {},
+    deleteBaseConhecimento: async () => {},
+    fetchTenantProfile: async () => null,
+    fetchNeurocores: async () => [],
+    createSynapse: async () => ({}),
+    updateSynapse: async () => {},
+    deleteSynapse: async () => {},
+    updateConversation: async () => {},
+    updateMessageFeedback: async () => {},
+    state: {} as any,
+    fetchDashboardKpis: async () => ({}),
+    fetchConversationsByHour: async () => [],
+    fetchConversationKeywords: async () => [],
+    fetchTenantListWithConversationCounts: async () => [],
+    updateGlobalFilters: () => {},
+    seedData: async () => {},
+    isLoading: false,
+  } as any
 }

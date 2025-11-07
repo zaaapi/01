@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchBaseConhecimentosByTenant,
   fetchBaseConhecimentoById,
@@ -31,7 +31,7 @@ export function useBaseConhecimentos(tenantId: string) {
  * Hook para buscar base de conhecimento por ID
  */
 export function useBaseConhecimento(id: string) {
-  return useQuery<BaseConhecimento, ApiError>({
+  return useQuery<BaseConhecimento | null, ApiError>({
     queryKey: queryKeys.baseConhecimentos.detail(id),
     queryFn: () => fetchBaseConhecimentoById(id),
     enabled: !!id,
@@ -93,7 +93,7 @@ export function useUpdateBaseConhecimento() {
 
       return { previousBase, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousBase) {
         queryClient.setQueryData(
           queryKeys.baseConhecimentos.detail(context.id),
@@ -134,7 +134,7 @@ export function useDeleteBaseConhecimento() {
       const previousBases = queryClient.getQueryData(queryKeys.baseConhecimentos.all)
       return { previousBases, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousBases) {
         queryClient.setQueryData(queryKeys.baseConhecimentos.all, context.previousBases)
       }

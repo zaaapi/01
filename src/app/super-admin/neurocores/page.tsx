@@ -92,7 +92,7 @@ export default function NeuroCoresPage() {
         setNeurocores(fetchedNeurocores)
         setTenants(fetchedTenants.map((t) => ({ id: t.id, neurocoreId: t.neurocoreId })))
         setAgents(fetchedAgents.map((a) => ({ id: a.id })))
-      } catch (error) {
+      } catch {
         console.error("Erro ao carregar dados:", error)
         toast({
           title: "Erro",
@@ -176,7 +176,7 @@ export default function NeuroCoresPage() {
       // Recarregar dados após salvar
       const fetchedNeurocores = await fetchNeurocores()
       setNeurocores(fetchedNeurocores)
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível salvar o NeuroCore.",
@@ -203,7 +203,7 @@ export default function NeuroCoresPage() {
         // Recarregar dados após inativar
         const fetchedNeurocores = await fetchNeurocores()
         setNeurocores(fetchedNeurocores)
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível inativar o NeuroCore.",
@@ -230,7 +230,7 @@ export default function NeuroCoresPage() {
         // Recarregar dados após reativar
         const fetchedNeurocores = await fetchNeurocores()
         setNeurocores(fetchedNeurocores)
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível reativar o NeuroCore.",
@@ -260,7 +260,7 @@ export default function NeuroCoresPage() {
         // Recarregar dados após associar agentes
         const fetchedNeurocores = await fetchNeurocores()
         setNeurocores(fetchedNeurocores)
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível associar os agentes.",

@@ -48,7 +48,6 @@ interface KanbanBoardProps {
 // Componente de item sortable
 function SortableItem({
   item,
-  index,
   onToggle,
   onDelete,
   onEdit,

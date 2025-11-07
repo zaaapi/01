@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
-import { Send, Book, Sparkles, Pencil, Check, Trash2 } from "lucide-react"
+import { Send, Book, Sparkles, Check, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useData } from "@/lib/contexts/data-provider"
 import { useAuth } from "@/lib/contexts/auth-context"
@@ -86,7 +86,7 @@ export default function TreinamentoPage() {
   }, [messages])
 
   // Simular resposta da IA
-  const simulateAIResponse = async (userMessage: string): Promise<ChatMessage> => {
+  const simulateAIResponse = async (): Promise<ChatMessage> => {
     setIsProcessing(true)
 
     // Simular delay de processamento
@@ -165,7 +165,7 @@ export default function TreinamentoPage() {
         description: "A synapse foi atualizada com sucesso.",
       })
       setEditSynapseModal({ open: false, synapse: null })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a synapse.",
@@ -192,7 +192,7 @@ export default function TreinamentoPage() {
           description: "A synapse está sendo publicada.",
         })
         setPublicarModal({ open: false, synapse: null })
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível publicar a synapse.",
@@ -218,7 +218,7 @@ export default function TreinamentoPage() {
           description: "A synapse foi excluída com sucesso.",
         })
         setDeleteModal({ open: false, synapse: null })
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível excluir a synapse.",

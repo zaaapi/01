@@ -14,7 +14,7 @@ interface MessageFeedbackPopoverProps {
   conversation: Conversation
 }
 
-export function MessageFeedbackPopover({ message, conversation }: MessageFeedbackPopoverProps) {
+export function MessageFeedbackPopover({ message }: MessageFeedbackPopoverProps) {
   const { toast } = useToast()
   const { updateMessageFeedback } = useData()
   const [open, setOpen] = useState(false)
@@ -38,7 +38,7 @@ export function MessageFeedbackPopover({ message, conversation }: MessageFeedbac
       setOpen(false)
       setSelectedType(null)
       setFeedbackText("")
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível enviar o feedback.",

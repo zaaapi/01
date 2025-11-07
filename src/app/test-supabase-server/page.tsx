@@ -22,7 +22,7 @@ async function testServerConnection() {
     const supabase = createSupabaseServerClient()
 
     // Testar conexão básica
-    const { data, error } = await supabase.from("feature_modules").select("count").limit(1)
+    const { error } = await supabase.from("feature_modules").select("count").limit(1)
 
     if (error) {
       return {

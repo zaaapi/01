@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchContactsByTenant,
   fetchContactById,
@@ -31,7 +31,7 @@ export function useContacts(tenantId: string) {
  * Hook para buscar contato por ID
  */
 export function useContact(id: string) {
-  return useQuery<Contact, ApiError>({
+  return useQuery<Contact | null, ApiError>({
     queryKey: queryKeys.contacts.detail(id),
     queryFn: () => fetchContactById(id),
     enabled: !!id,
@@ -87,7 +87,7 @@ export function useUpdateContact() {
 
       return { previousContact, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousContact) {
         queryClient.setQueryData(queryKeys.contacts.detail(context.id), context.previousContact)
       }
@@ -125,7 +125,7 @@ export function useDeleteContact() {
       const previousContacts = queryClient.getQueryData(queryKeys.contacts.all)
       return { previousContacts, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousContacts) {
         queryClient.setQueryData(queryKeys.contacts.all, context.previousContacts)
       }

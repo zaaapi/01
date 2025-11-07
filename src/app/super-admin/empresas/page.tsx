@@ -26,7 +26,6 @@ import {
 import { Plus, Pencil, Power, PowerOff, Users, Building } from "lucide-react"
 import { useTenants, useUpdateTenant, useCreateTenant } from "@/lib/hooks"
 import { useNeurocores } from "@/lib/hooks"
-import { useToast } from "@/hooks/use-toast"
 import { Tenant } from "@/types"
 import { AddEditEmpresaModal } from "./_components/add-edit-empresa-modal"
 import { InativarEmpresaModal } from "./_components/inativar-empresa-modal"
@@ -37,7 +36,6 @@ import { useRouter } from "next/navigation"
 
 export default function EmpresasPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("active")
 
   // React Query hooks

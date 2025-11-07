@@ -172,3 +172,4 @@ Mas **não é necessário agora!** O código já está adaptado.
 ---
 
 **Última atualização:** Novembro 2024
+

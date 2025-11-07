@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { Synapse } from "@/types"
 import { mapSynapseFromDB, mapSynapseToDB } from "./mappers"
 
-export interface CreateSynapseDTO extends Omit<Synapse, "id" | "createdAt"> {}
-export interface UpdateSynapseDTO extends Partial<Omit<Synapse, "id" | "createdAt">> {}
+export type CreateSynapseDTO = Omit<Synapse, "id" | "createdAt">
+export type UpdateSynapseDTO = Partial<Omit<Synapse, "id" | "createdAt">>
 
 /**
  * Buscar synapses por base de conhecimento

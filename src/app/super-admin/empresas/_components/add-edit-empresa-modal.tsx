@@ -51,8 +51,6 @@ const empresaSchema = z.object({
   masterIntegrationActive: z.boolean().default(false),
 })
 
-type FormValues = z.infer<typeof empresaSchema>
-
 interface AddEditEmpresaModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void

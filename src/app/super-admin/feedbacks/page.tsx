@@ -75,7 +75,7 @@ export default function FeedbacksPage() {
       try {
         const data = await fetchFeedbacks()
         setFeedbacks(data)
-      } catch (error) {
+      } catch {
         console.error("Erro ao carregar feedbacks:", error)
         toast({
           title: "Erro ao carregar feedbacks",
@@ -152,7 +152,7 @@ export default function FeedbacksPage() {
           description: "O status do feedback foi atualizado com sucesso.",
         })
         setChangeStatusModal({ open: false, feedback: null })
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível atualizar o status.",

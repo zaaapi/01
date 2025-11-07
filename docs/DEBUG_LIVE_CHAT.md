@@ -295,3 +295,4 @@ curl -X POST http://localhost:3000/api/n8n \
 ---
 
 **Cole aqui os logs exatos que aparecem para eu ajudar melhor!** 🚀
+

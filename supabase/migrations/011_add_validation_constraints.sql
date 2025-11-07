@@ -66,3 +66,4 @@ COMMENT ON CONSTRAINT check_cpf_format ON public.contacts IS 'Valida formato bá
 
 
 
+

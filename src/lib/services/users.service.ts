@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { User, FeatureModule } from "@/types"
 import { mapUserFromDB, mapUserToDB, mapFeatureModuleFromDB } from "./mappers"
 
-export interface CreateUserDTO extends Omit<User, "id" | "createdAt"> {}
-export interface UpdateUserDTO extends Partial<Omit<User, "id" | "createdAt">> {}
+export type CreateUserDTO = Omit<User, "id" | "createdAt">
+export type UpdateUserDTO = Partial<Omit<User, "id" | "createdAt">>
 
 /**
  * Buscar usuários por tenant

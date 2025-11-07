@@ -12,6 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // IMPORTANTE: Use createSupabaseServerClient() em Server Components/Actions
 export function createSupabaseServerClient(): SupabaseClient {
   // Import dinâmico para evitar erro em Client Components
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { cookies } = require("next/headers")
   const cookieStore = cookies()
 

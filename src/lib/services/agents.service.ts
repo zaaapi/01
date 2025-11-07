@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { Agent } from "@/types"
 import { mapAgentFromDB, mapAgentToDB } from "./mappers"
 
-export interface CreateAgentDTO extends Omit<Agent, "id" | "createdAt"> {}
-export interface UpdateAgentDTO extends Partial<Omit<Agent, "id" | "createdAt">> {}
+export type CreateAgentDTO = Omit<Agent, "id" | "createdAt">
+export type UpdateAgentDTO = Partial<Omit<Agent, "id" | "createdAt">>
 
 /**
  * Buscar todos os agents

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Conversation, Contact, ConversationStatus } from "@/types"
 import { formatRelativeTime } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
-import { MessageSquare, Bot } from "lucide-react"
+import { Bot } from "lucide-react"
 
 interface ConversationListProps {
   conversations: Conversation[]
@@ -17,7 +17,6 @@ export function ConversationList({
   conversations,
   selectedConversationId,
   onSelectConversation,
-  contacts,
 }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
@@ -30,7 +29,6 @@ export function ConversationList({
   return (
     <div className="divide-y">
       {conversations.map((conversation) => {
-        const contact = contacts.find((c) => c.id === conversation.contactId)
         return (
           <div
             key={conversation.id}

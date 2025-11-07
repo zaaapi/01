@@ -99,3 +99,4 @@ COMMENT ON FUNCTION get_user_tenant_id() IS 'Obtém o tenant_id do usuário do J
 
 
 
+

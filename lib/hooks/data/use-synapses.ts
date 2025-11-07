@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchSynapsesByBaseConhecimento,
   fetchSynapsesByTenant,
@@ -43,7 +43,7 @@ export function useSynapsesByTenant(tenantId: string) {
  * Hook para buscar synapse por ID
  */
 export function useSynapse(id: string) {
-  return useQuery<Synapse, ApiError>({
+  return useQuery<Synapse | null, ApiError>({
     queryKey: queryKeys.synapses.detail(id),
     queryFn: () => fetchSynapseById(id),
     enabled: !!id,
@@ -106,7 +106,7 @@ export function useUpdateSynapse() {
 
       return { previousSynapse, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousSynapse) {
         queryClient.setQueryData(queryKeys.synapses.detail(context.id), context.previousSynapse)
       }
@@ -144,7 +144,7 @@ export function useDeleteSynapse() {
       const previousSynapses = queryClient.getQueryData(queryKeys.synapses.all)
       return { previousSynapses, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousSynapses) {
         queryClient.setQueryData(queryKeys.synapses.all, context.previousSynapses)
       }

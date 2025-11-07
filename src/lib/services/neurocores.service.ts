@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { NeuroCore } from "@/types"
 import { mapNeuroCoreFromDB, mapNeuroCoreToDB } from "./mappers"
 
-export interface CreateNeuroCoreDTO extends Omit<NeuroCore, "id" | "createdAt"> {}
-export interface UpdateNeuroCoreDTO extends Partial<Omit<NeuroCore, "id" | "createdAt">> {}
+export type CreateNeuroCoreDTO = Omit<NeuroCore, "id" | "createdAt">
+export type UpdateNeuroCoreDTO = Partial<Omit<NeuroCore, "id" | "createdAt">>
 
 /**
  * Buscar todos os neurocores

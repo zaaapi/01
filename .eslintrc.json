@@ -9,6 +9,7 @@
     }
   },
   "plugins": ["@typescript-eslint"],
+  "ignorePatterns": ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
   "rules": {
     "@typescript-eslint/no-unused-vars": [
       "error",

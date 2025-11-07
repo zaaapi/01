@@ -94,7 +94,6 @@ export function FeedbackDetailsModal({
   const message = feedbackData.message
   const tenant = feedbackData.tenant
   const user = feedbackData.user
-  const conversation = feedbackData.conversation
 
   const handleSave = async () => {
     if (!feedback) return
@@ -267,7 +266,6 @@ export function FeedbackDetailsModal({
                   {conversationMessages.map((msg) => {
                     const isIA = msg.senderType === MessageSenderType.IA
                     const isCustomer = msg.senderType === MessageSenderType.CUSTOMER
-                    const isAtendente = msg.senderType === MessageSenderType.ATENDENTE
 
                     return (
                       <div

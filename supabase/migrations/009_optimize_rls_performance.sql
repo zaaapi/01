@@ -71,3 +71,4 @@ COMMENT ON INDEX idx_conversations_tenant_id_id IS 'Índice para otimizar polít
 
 
 
+

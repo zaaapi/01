@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchTenants,
   fetchTenantById,
@@ -31,7 +31,7 @@ export function useTenants(filter: TenantFilter = "all") {
  * Hook para buscar tenant por ID
  */
 export function useTenant(id: string) {
-  return useQuery<Tenant, ApiError>({
+  return useQuery<Tenant | null, ApiError>({
     queryKey: queryKeys.tenants.detail(id),
     queryFn: () => fetchTenantById(id),
     enabled: !!id,
@@ -84,7 +84,7 @@ export function useUpdateTenant() {
 
       return { previousTenant, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousTenant) {
         queryClient.setQueryData(queryKeys.tenants.detail(context.id), context.previousTenant)
       }
@@ -122,7 +122,7 @@ export function useDeleteTenant() {
       const previousTenants = queryClient.getQueryData(queryKeys.tenants.all)
       return { previousTenants, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousTenants) {
         queryClient.setQueryData(queryKeys.tenants.all, context.previousTenants)
       }

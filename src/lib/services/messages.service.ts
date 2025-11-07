@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { Message } from "@/types"
 import { mapMessageFromDB, mapMessageToDB } from "./mappers"
 
-export interface CreateMessageDTO extends Omit<Message, "id"> {}
-export interface UpdateMessageDTO extends Partial<Omit<Message, "id">> {}
+export type CreateMessageDTO = Omit<Message, "id">
+export type UpdateMessageDTO = Partial<Omit<Message, "id">>
 
 /**
  * Buscar mensagens por conversa

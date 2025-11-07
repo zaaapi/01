@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { Conversation } from "@/types"
 import { mapConversationFromDB, mapConversationToDB } from "./mappers"
 
-export interface CreateConversationDTO extends Omit<Conversation, "id" | "createdAt"> {}
-export interface UpdateConversationDTO extends Partial<Omit<Conversation, "id" | "createdAt">> {}
+export type CreateConversationDTO = Omit<Conversation, "id" | "createdAt">
+export type UpdateConversationDTO = Partial<Omit<Conversation, "id" | "createdAt">>
 
 /**
  * Buscar conversas por tenant

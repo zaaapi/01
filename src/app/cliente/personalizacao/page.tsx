@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { useRouter } from "next/navigation"
-import { Agent, AgentType, AgentFunction } from "@/types"
+import { Agent } from "@/types"
 import { PersonalizarAgenteModal } from "./_components/personalizar-agente-modal"
 
 export default function PersonalizacaoPage() {

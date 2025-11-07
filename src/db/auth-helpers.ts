@@ -1,5 +1,4 @@
 import { createSupabaseServerClient } from "@/db"
-import { cookies } from "next/headers"
 
 /**
  * Helper para obter usuário atual no servidor

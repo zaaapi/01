@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchAgents,
   fetchAgentById,
@@ -30,7 +30,7 @@ export function useAgents() {
  * Hook para buscar agent por ID
  */
 export function useAgent(id: string) {
-  return useQuery<Agent, ApiError>({
+  return useQuery<Agent | null, ApiError>({
     queryKey: queryKeys.agents.detail(id),
     queryFn: () => fetchAgentById(id),
     enabled: !!id,
@@ -83,7 +83,7 @@ export function useUpdateAgent() {
 
       return { previousAgents, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousAgents) {
         queryClient.setQueryData(queryKeys.agents.detail(context.id), context.previousAgents)
       }
@@ -121,7 +121,7 @@ export function useDeleteAgent() {
       const previousAgents = queryClient.getQueryData(queryKeys.agents.list())
       return { previousAgents, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousAgents) {
         queryClient.setQueryData(queryKeys.agents.list(), context.previousAgents)
       }

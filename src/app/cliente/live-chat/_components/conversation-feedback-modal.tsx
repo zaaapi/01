@@ -65,7 +65,7 @@ export function ConversationFeedbackModal({
       setFeedbackType(null)
       setFeedbackText("")
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível enviar o feedback.",

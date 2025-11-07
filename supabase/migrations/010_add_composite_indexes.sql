@@ -86,3 +86,4 @@ COMMENT ON INDEX idx_synapses_tenant_status IS 'Índice composto para otimizar l
 
 
 
+

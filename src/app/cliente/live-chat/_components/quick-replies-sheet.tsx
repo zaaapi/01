@@ -61,8 +61,7 @@ export function QuickRepliesSheet({
     try {
       const data = await fetchQuickReplyTemplates(tenantId)
       setQuickReplies(data)
-    } catch (error) {
-      console.error("Erro ao carregar respostas rápidas:", error)
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível carregar as respostas rápidas.",
@@ -100,7 +99,7 @@ export function QuickRepliesSheet({
       await loadQuickReplies()
       setShowDeleteModal(false)
       setDeletingReply(null)
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível excluir a resposta rápida.",
@@ -202,7 +201,7 @@ export function QuickRepliesSheet({
           <DialogHeader>
             <DialogTitle>Excluir Resposta Rápida</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir a resposta rápida "{deletingReply?.title}"? Esta ação
+              Tem certeza que deseja excluir a resposta rápida &quot;{deletingReply?.title}&quot;? Esta ação
               não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
@@ -293,7 +292,7 @@ function AddEditQuickReplyModal({
         })
       }
       onSuccess()
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível salvar a resposta rápida.",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -63,7 +63,7 @@ export function GerenciarUsuariosModal({
         try {
           const fetchedUsers = await fetchUsersByTenant(empresaId)
           setUsuarios(fetchedUsers)
-        } catch (error) {
+        } catch {
           console.error("Erro ao carregar usuários:", error)
           toast({
             title: "Erro",
@@ -146,7 +146,7 @@ export function GerenciarUsuariosModal({
         setUsuarios(fetchedUsers)
       }
       setSheetState({ open: false, mode: "view", usuario: null })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível salvar o usuário.",
@@ -168,7 +168,7 @@ export function GerenciarUsuariosModal({
         // Recarregar usuários após excluir
         const fetchedUsers = await fetchUsersByTenant(empresaId)
         setUsuarios(fetchedUsers)
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível excluir o usuário.",

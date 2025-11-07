@@ -62,7 +62,6 @@ export function UsuarioSheet({
   onOpenChange,
   usuario,
   mode,
-  tenantId,
   onSave,
 }: UsuarioSheetProps) {
   const { state } = useData()
@@ -70,7 +69,6 @@ export function UsuarioSheet({
 
   const isViewMode = mode === "view"
   const isEditMode = mode === "edit"
-  const isAddMode = mode === "add"
 
   const form = useForm<FormValues>({
     resolver: zodResolver(usuarioSchema),

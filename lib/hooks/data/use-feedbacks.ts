@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchFeedbacksByTenant,
   fetchAllFeedbacks,
@@ -42,7 +42,7 @@ export function useAllFeedbacks() {
  * Hook para buscar feedback por ID
  */
 export function useFeedback(id: string) {
-  return useQuery<Feedback, ApiError>({
+  return useQuery<Feedback | null, ApiError>({
     queryKey: queryKeys.feedbacks.detail(id),
     queryFn: () => fetchFeedbackById(id),
     enabled: !!id,
@@ -100,7 +100,7 @@ export function useUpdateFeedback() {
 
       return { previousFeedback, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousFeedback) {
         queryClient.setQueryData(queryKeys.feedbacks.detail(context.id), context.previousFeedback)
       }
@@ -138,7 +138,7 @@ export function useDeleteFeedback() {
       const previousFeedbacks = queryClient.getQueryData(queryKeys.feedbacks.all)
       return { previousFeedbacks, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousFeedbacks) {
         queryClient.setQueryData(queryKeys.feedbacks.all, context.previousFeedbacks)
       }

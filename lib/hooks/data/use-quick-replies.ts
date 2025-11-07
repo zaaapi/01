@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchQuickRepliesByTenant,
   fetchQuickReplyById,
@@ -32,7 +32,7 @@ export function useQuickReplies(tenantId: string) {
  * Hook para buscar quick reply por ID
  */
 export function useQuickReply(id: string) {
-  return useQuery<QuickReplyTemplate, ApiError>({
+  return useQuery<QuickReplyTemplate | null, ApiError>({
     queryKey: queryKeys.quickReplies.detail(id),
     queryFn: () => fetchQuickReplyById(id),
     enabled: !!id,
@@ -92,7 +92,7 @@ export function useUpdateQuickReply() {
 
       return { previousQuickReply, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousQuickReply) {
         queryClient.setQueryData(
           queryKeys.quickReplies.detail(context.id),
@@ -133,7 +133,7 @@ export function useDeleteQuickReply() {
       const previousQuickReplies = queryClient.getQueryData(queryKeys.quickReplies.all)
       return { previousQuickReplies, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousQuickReplies) {
         queryClient.setQueryData(queryKeys.quickReplies.all, context.previousQuickReplies)
       }

@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useData } from "@/lib/contexts/data-provider"
-import { Contact, Conversation, Message, ConversationStatus } from "@/types"
+import { Conversation, Message, ConversationStatus } from "@/types"
 
 interface UseLiveChatDataProps {
   tenantId: string | undefined

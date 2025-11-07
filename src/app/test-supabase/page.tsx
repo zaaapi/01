@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { createSupabaseClient } from "@/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -68,7 +68,7 @@ export default function TestSupabasePage() {
     })
 
     try {
-      const supabase = createSupabaseClient()
+      createSupabaseClient()
       addResult({
         name: "Cliente Supabase",
         status: "success",
@@ -93,7 +93,7 @@ export default function TestSupabasePage() {
 
     try {
       const supabase = createSupabaseClient()
-      const { data, error } = await supabase.from("feature_modules").select("count").limit(1)
+      const { error } = await supabase.from("feature_modules").select("count").limit(1)
 
       if (error) {
         throw error
@@ -182,7 +182,7 @@ export default function TestSupabasePage() {
     try {
       const supabase = createSupabaseClient()
       // Tentar fazer uma query sem autenticação (deve falhar por RLS)
-      const { error } = await supabase.from("tenants").select("*").limit(1)
+      const { error: _error } = await supabase.from("tenants").select("*").limit(1)
 
       // Se não houver erro, pode ser que RLS não esteja habilitado ou não tenha políticas
       addResult({
@@ -283,7 +283,7 @@ export default function TestSupabasePage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">
-              Nenhum teste executado ainda. Clique em "Executar Testes" para começar.
+              Nenhum teste executado ainda. Clique em &quot;Executar Testes&quot; para começar.
             </p>
           </CardContent>
         </Card>

@@ -81,7 +81,7 @@ export function ChangeStatusModal({
 
           {newStatus === feedback.feedbackStatus && (
             <p className="text-sm text-muted-foreground">
-              O status atual já é "{feedback.feedbackStatus}". Selecione um status diferente.
+              O status atual já é &quot;{feedback.feedbackStatus}&quot;. Selecione um status diferente.
             </p>
           )}
         </div>

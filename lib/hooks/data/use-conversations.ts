@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchConversationsByTenant,
   fetchConversationsByContact,
@@ -43,7 +43,7 @@ export function useConversationsByContact(contactId: string) {
  * Hook para buscar conversa por ID
  */
 export function useConversation(id: string) {
-  return useQuery<Conversation, ApiError>({
+  return useQuery<Conversation | null, ApiError>({
     queryKey: queryKeys.conversations.detail(id),
     queryFn: () => fetchConversationById(id),
     enabled: !!id,
@@ -106,7 +106,7 @@ export function useUpdateConversation() {
 
       return { previousConversation, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousConversation) {
         queryClient.setQueryData(
           queryKeys.conversations.detail(context.id),
@@ -147,7 +147,7 @@ export function useDeleteConversation() {
       const previousConversations = queryClient.getQueryData(queryKeys.conversations.all)
       return { previousConversations, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousConversations) {
         queryClient.setQueryData(queryKeys.conversations.all, context.previousConversations)
       }

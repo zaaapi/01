@@ -25,12 +25,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { NeuroCore, Agent } from "@/types"
 import { useData } from "@/lib/contexts/data-provider"
 import { useToast } from "@/hooks/use-toast"
-import { Bot, Plus, Trash2, X } from "lucide-react"
+import { Bot, Plus, Trash2 } from "lucide-react"
 import { AssociarAgentesSheet } from "./associar-agentes-sheet"
 import {
   AlertDialog,
@@ -42,7 +41,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Input as ConfirmInput } from "@/components/ui/input"
 
 const neurocoreSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
@@ -142,7 +140,7 @@ export function AddEditNeuroCoreModal({
 
     if (isEditMode && !data.apiSecret) {
       // Remover apiSecret do objeto se estiver vazio
-      const { apiSecret, ...rest } = updateData
+      const { apiSecret: _apiSecret, ...rest } = updateData
       onSave(rest)
     } else {
       onSave(updateData)
@@ -352,7 +350,7 @@ export function AddEditNeuroCoreModal({
                     <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p>Nenhum agente associado</p>
                     {!isViewMode && (
-                      <p className="text-sm">Clique em "Adicionar Agente" para associar</p>
+                      <p className="text-sm">Clique em &quot;Adicionar Agente&quot; para associar</p>
                     )}
                   </div>
                 ) : (

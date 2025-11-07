@@ -53,7 +53,7 @@ export default function SuperAdminDashboard() {
     fetchTenantListWithConversationCounts,
     updateGlobalFilters,
   } = useData()
-  const { user } = useAuth()
+  const { user: _user } = useAuth()
   const { toast } = useToast()
 
   const [localPeriod, setLocalPeriod] = useState<GlobalFilterPeriod>(state.globalFilters.period)

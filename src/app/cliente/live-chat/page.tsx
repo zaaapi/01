@@ -96,7 +96,6 @@ export default function LiveChatPage() {
     resumeIA,
     endConversation: endConversationAction,
     updateContact,
-    isSendingMessage,
     isEndingConversation,
   } = useLiveChatActions()
 
@@ -205,7 +204,7 @@ export default function LiveChatPage() {
     if (tenantId) {
       setIsLoadingQuickReplies(true)
       fetchQuickReplyTemplates(tenantId, true)
-        .then((data) => setQuickReplies(data.slice(0, 10)))
+        .then((data: any) => setQuickReplies(data.slice(0, 10)))
         .finally(() => setIsLoadingQuickReplies(false))
     }
   })
@@ -240,7 +239,7 @@ export default function LiveChatPage() {
     })
 
     // Verificar se teve sucesso
-    if (result?.data?.success) {
+    if ((result as any)?.data?.success) {
       // Remover mensagem otimista e recarregar do servidor
       setTimeout(() => {
         removeOptimisticMessage(optimisticMessage.id)
@@ -272,7 +271,7 @@ export default function LiveChatPage() {
     }
 
     // Só invalidar se teve sucesso
-    if (result?.data?.success) {
+    if ((result as any)?.data?.success) {
       invalidateConversations()
     }
   }
@@ -287,7 +286,7 @@ export default function LiveChatPage() {
     })
 
     // Só fechar dialog e invalidar se teve sucesso
-    if (result?.data?.success) {
+    if ((result as any)?.data?.success) {
       setShowEndDialog(false)
       invalidateConversations()
     }
@@ -305,7 +304,7 @@ export default function LiveChatPage() {
         const updatedQuickReplies = await fetchQuickReplyTemplates(tenantId, true)
         setQuickReplies(updatedQuickReplies.slice(0, 10))
       }
-    } catch (error) {
+    } catch {
       // Ignorar erro de incremento
     }
   }
@@ -344,7 +343,7 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
         title: "Informações copiadas",
         description: "As informações do cliente foram copiadas para a área de transferência.",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível copiar as informações.",
@@ -353,15 +352,14 @@ ${selectedContact.tags?.join(", ") || "Nenhuma tag"}
     }
   }
 
-  const handleUpdateContact = async (data: any) => {
+  const handleUpdateContact = async (data: Record<string, unknown>) => {
     if (!selectedContactId) return
 
     await updateContact({ contactId: selectedContactId, data })
     invalidateSelectedContact()
 
-    // Reload contact
-    const updatedContact = await fetchContact(selectedContactId)
-    // O cache já foi invalidado, o React Query vai recarregar
+    // Reload contact - o cache já foi invalidado, o React Query vai recarregar
+    await fetchContact(selectedContactId)
   }
 
   // Early return para no tenant

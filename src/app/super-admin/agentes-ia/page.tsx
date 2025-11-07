@@ -140,7 +140,7 @@ export default function AgentesIAPage() {
         })
       }
       setAddEditModal({ open: false, agent: null })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível salvar o agente.",
@@ -163,7 +163,7 @@ export default function AgentesIAPage() {
           description: "O agente foi excluído com sucesso.",
         })
         setDeleteModal({ open: false, agent: null })
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível excluir o agente.",
@@ -189,7 +189,7 @@ export default function AgentesIAPage() {
           description: "Os NeuroCores foram associados com sucesso.",
         })
         setNeurocoresSheet({ open: false, agent: null })
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível associar os NeuroCores.",

@@ -26,7 +26,6 @@ import { useAuth } from "@/lib/contexts/auth-context"
 import { useData } from "@/lib/contexts/data-provider"
 import { useToast } from "@/hooks/use-toast"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
-import { seedData } from "@/lib/seed-data"
 
 const perfilSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),

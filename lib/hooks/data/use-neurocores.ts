@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "./query-keys"
+import { queryKeys } from "@/lib/hooks/data/query-keys"
 import {
   fetchNeurocores,
   fetchNeurocoreById,
@@ -30,7 +30,7 @@ export function useNeurocores() {
  * Hook para buscar neurocore por ID
  */
 export function useNeurocore(id: string) {
-  return useQuery<NeuroCore, ApiError>({
+  return useQuery<NeuroCore | null, ApiError>({
     queryKey: queryKeys.neurocores.detail(id),
     queryFn: () => fetchNeurocoreById(id),
     enabled: !!id,
@@ -83,7 +83,7 @@ export function useUpdateNeurocore() {
 
       return { previousNeurocore, id }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, context: any) => {
       if (context?.previousNeurocore) {
         queryClient.setQueryData(
           queryKeys.neurocores.detail(context.id),
@@ -124,7 +124,7 @@ export function useDeleteNeurocore() {
       const previousNeurocores = queryClient.getQueryData(queryKeys.neurocores.list())
       return { previousNeurocores, id }
     },
-    onError: (error, _, context) => {
+    onError: (error, _, context: any) => {
       if (context?.previousNeurocores) {
         queryClient.setQueryData(queryKeys.neurocores.list(), context.previousNeurocores)
       }

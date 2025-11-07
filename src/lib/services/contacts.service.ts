@@ -2,8 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { Contact } from "@/types"
 import { mapContactFromDB, mapContactToDB } from "./mappers"
 
-export interface CreateContactDTO extends Omit<Contact, "id" | "createdAt"> {}
-export interface UpdateContactDTO extends Partial<Omit<Contact, "id" | "createdAt">> {}
+export type CreateContactDTO = Omit<Contact, "id" | "createdAt">
+export type UpdateContactDTO = Partial<Omit<Contact, "id" | "createdAt">>
 
 /**
  * Buscar contatos por tenant

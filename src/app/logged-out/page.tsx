@@ -1,7 +1,6 @@
 "use client"
 
 import { PageContainer } from "@/components/shared/page-container"
-import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LogIn } from "lucide-react"

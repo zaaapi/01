@@ -4,8 +4,8 @@ import { mapTenantFromDB, mapTenantToDB } from "./mappers"
 
 export type TenantFilter = "all" | "active" | "inactive"
 
-export interface CreateTenantDTO extends Omit<Tenant, "id" | "createdAt"> {}
-export interface UpdateTenantDTO extends Partial<Omit<Tenant, "id" | "createdAt">> {}
+export type CreateTenantDTO = Omit<Tenant, "id" | "createdAt">
+export type UpdateTenantDTO = Partial<Omit<Tenant, "id" | "createdAt">>
 
 /**
  * Buscar tenants com filtro opcional

@@ -2,9 +2,8 @@ import { createSupabaseClient } from "@/db"
 import { BaseConhecimento } from "@/types"
 import { mapBaseConhecimentoFromDB, mapBaseConhecimentoToDB } from "./mappers"
 
-export interface CreateBaseConhecimentoDTO extends Omit<BaseConhecimento, "id" | "createdAt"> {}
-export interface UpdateBaseConhecimentoDTO
-  extends Partial<Omit<BaseConhecimento, "id" | "createdAt">> {}
+export type CreateBaseConhecimentoDTO = Omit<BaseConhecimento, "id" | "createdAt">
+export type UpdateBaseConhecimentoDTO = Partial<Omit<BaseConhecimento, "id" | "createdAt">>
 
 /**
  * Buscar bases de conhecimento por tenant

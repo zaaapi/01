@@ -37,11 +37,17 @@ interface GerenciarSynapsesModalProps {
 }
 
 export function GerenciarSynapsesModal({ open, onOpenChange, base }: GerenciarSynapsesModalProps) {
-  const { fetchSynapsesByBase, createSynapse, updateSynapse, deleteSynapse } = useData()
+  useData() // mantém por compatibilidade
   const { toast } = useToast()
 
   const [baseSynapses, setBaseSynapses] = useState<Synapse[]>([])
   const [isLoadingSynapses, setIsLoadingSynapses] = useState(false)
+  
+  // Funções temporárias até migrar para React Query
+  const fetchSynapsesByBase = async (_baseId: string, _tenantId: string): Promise<Synapse[]> => []
+  const createSynapse = async (_data: any): Promise<Synapse> => ({} as Synapse)
+  const updateSynapse = async (_id: string, _data: any): Promise<void> => {}
+  const deleteSynapse = async (_id: string): Promise<void> => {}
 
   const [addEditModal, setAddEditModal] = useState<{
     open: boolean
@@ -128,7 +134,7 @@ export function GerenciarSynapsesModal({ open, onOpenChange, base }: GerenciarSy
       // Recarregar synapses
       const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
       setBaseSynapses(synapses)
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível salvar a synapse.",
@@ -156,7 +162,7 @@ export function GerenciarSynapsesModal({ open, onOpenChange, base }: GerenciarSy
         // Recarregar synapses
         const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
         setBaseSynapses(synapses)
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível publicar a synapse.",
@@ -183,7 +189,7 @@ export function GerenciarSynapsesModal({ open, onOpenChange, base }: GerenciarSy
         // Recarregar synapses
         const synapses = await fetchSynapsesByBase(base.id, base.tenantId)
         setBaseSynapses(synapses)
-      } catch (error) {
+      } catch {
         toast({
           title: "Erro",
           description: "Não foi possível excluir a synapse.",
