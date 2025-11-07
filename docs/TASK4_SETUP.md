@@ -61,21 +61,23 @@ Se você já criou um usuário super_admin no seed:
 
 1. Execute no SQL Editor do Supabase:
    ```sql
-   UPDATE auth.users 
+   UPDATE auth.users
    SET raw_app_meta_data = raw_app_meta_data || '{"user_role": "super_admin"}'::jsonb
    WHERE id = (SELECT id FROM public.users WHERE role = 'super_admin' LIMIT 1);
    ```
 
 Ou atualize manualmente o registro em `public.users` para disparar o trigger:
+
 ```sql
-UPDATE public.users 
-SET role = 'super_admin' 
+UPDATE public.users
+SET role = 'super_admin'
 WHERE email = 'email-do-super-admin@exemplo.com';
 ```
 
 ## 5. Testar o Fluxo
 
 1. **Inicie o servidor de desenvolvimento:**
+
    ```bash
    npm run dev
    ```
@@ -98,18 +100,21 @@ WHERE email = 'email-do-super-admin@exemplo.com';
 ## Troubleshooting
 
 ### Erro: "Missing Supabase environment variables"
+
 - Verifique se o arquivo `.env.local` existe e contém as variáveis corretas
 - Reinicie o servidor de desenvolvimento após adicionar variáveis
 
 ### Erro: "User profile not found"
+
 - Verifique se os triggers foram executados corretamente
 - Execute manualmente a função `handle_new_user()` se necessário
 
 ### Redirecionamento não funciona
+
 - Verifique se o `role` do usuário está correto em `public.users`
 - Verifique se os custom claims estão no `raw_app_meta_data` do `auth.users`
 
 ### RLS bloqueando queries
+
 - Verifique se as políticas RLS estão configuradas corretamente (Task 2)
 - Verifique se os custom claims estão sendo incluídos no JWT
-

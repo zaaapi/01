@@ -88,6 +88,3 @@
 - `supabase/migrations/001_initial_schema.sql` - Schema completo atualizado
 - `supabase/migrations/002_rls_policies.sql` - Políticas RLS atualizadas
 - `app/test-supabase/page.tsx` - Teste atualizado com novas tabelas
-
-
-

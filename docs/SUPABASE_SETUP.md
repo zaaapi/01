@@ -19,6 +19,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_aqui
 ```
 
 **Como obter essas variáveis:**
+
 1. Acesse o painel do Supabase: https://app.supabase.com
 2. Selecione seu projeto
 3. Vá em **Settings** > **API**
@@ -55,14 +56,14 @@ As políticas RLS estão configuradas em `supabase/migrations/002_rls_policies.s
 ### No Servidor (Server Components / Server Actions)
 
 ```typescript
-import { createSupabaseServerClient } from '@/db';
-import { getCurrentUserWithProfile } from '@/db/auth-helpers';
+import { createSupabaseServerClient } from "@/db"
+import { getCurrentUserWithProfile } from "@/db/auth-helpers"
 
 // Em Server Components
 export default async function MyPage() {
-  const supabase = createSupabaseServerClient();
-  const user = await getCurrentUserWithProfile();
-  
+  const supabase = createSupabaseServerClient()
+  const user = await getCurrentUserWithProfile()
+
   // ...
 }
 ```
@@ -70,21 +71,21 @@ export default async function MyPage() {
 ### No Cliente (Client Components)
 
 ```typescript
-'use client';
+"use client"
 
-import { createSupabaseClient } from '@/db';
-import { useEffect, useState } from 'react';
+import { createSupabaseClient } from "@/db"
+import { useEffect, useState } from "react"
 
 export function MyComponent() {
-  const [user, setUser] = useState(null);
-  const supabase = createSupabaseClient();
-  
+  const [user, setUser] = useState(null)
+  const supabase = createSupabaseClient()
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
-  }, []);
-  
+      setUser(data.user)
+    })
+  }, [])
+
   // ...
 }
 ```
@@ -115,6 +116,7 @@ Certifique-se de que o arquivo `.env.local` existe e contém as variáveis corre
 ### Erro: "Row Level Security policy violation"
 
 Verifique se:
+
 1. As migrações RLS foram executadas
 2. O usuário está autenticado
 3. O usuário tem permissões adequadas (super_admin ou pertence ao tenant)
@@ -122,6 +124,3 @@ Verifique se:
 ### Erro ao criar cliente no servidor
 
 Certifique-se de usar `createSupabaseServerClient()` em Server Components/Actions e `createSupabaseClient()` em Client Components.
-
-
-

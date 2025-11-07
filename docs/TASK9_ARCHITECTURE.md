@@ -197,13 +197,11 @@
 ### Níveis de Tratamento
 
 1. **DataProvider:**
-
    - `try/catch` em todas as funções assíncronas
    - `console.error()` para logging
    - Retorna arrays vazios em caso de erro (evita crashes)
 
 2. **Componentes:**
-
    - `try/catch` em handlers de ações
    - Exibe toasts de erro com mensagens amigáveis
    - Mantém estado consistente mesmo com erros

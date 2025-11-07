@@ -11,13 +11,11 @@ Esta task implementou a integração completa da tela "Gerenciar Feedbacks" da p
 #### Novas Funções Adicionadas:
 
 - **`fetchFeedbacks()`**: Busca todos os feedbacks do Supabase com JOINs para dados relacionados
-
   - Retorna feedbacks com informações de tenant, usuário, conversa e mensagem
   - Ordenados por data de criação (mais recentes primeiro)
   - Utiliza relacionamentos via foreign keys do schema
 
 - **`fetchConversationMessages(conversationId: string)`**: Busca mensagens de uma conversa específica
-
   - Retorna todas as mensagens ordenadas por timestamp
   - Inclui feedback inline das mensagens (quando disponível)
 
@@ -40,10 +38,10 @@ Esta task implementou a integração completa da tela "Gerenciar Feedbacks" da p
 
 ```typescript
 interface EnrichedFeedback extends Feedback {
-  messageContent: string;
-  tenantName: string;
-  userName: string;
-  contactName: string;
+  messageContent: string
+  tenantName: string
+  userName: string
+  contactName: string
 }
 ```
 
@@ -170,27 +168,23 @@ As operações respeitam as políticas RLS configuradas na Task 2:
 ## Testes Recomendados
 
 1. **Listagem:**
-
    - [ ] Verificar se feedbacks são carregados do Supabase
    - [ ] Validar informações de tenant, usuário e mensagem
    - [ ] Testar loading state inicial
 
 2. **Filtragem:**
-
    - [ ] Filtrar por status (Em Aberto, Sendo Tratado, Encerrado)
    - [ ] Filtrar por tipo (Like, Dislike)
    - [ ] Combinar filtros
    - [ ] Validar contadores no rodapé
 
 3. **Visualização de Detalhes:**
-
    - [ ] Abrir modal de detalhes
    - [ ] Verificar carregamento do histórico de mensagens
    - [ ] Validar destaque da mensagem com feedback
    - [ ] Testar empty state quando não há mensagens
 
 4. **Edição:**
-
    - [ ] Alterar status do feedback
    - [ ] Adicionar comentário do super admin
    - [ ] Salvar alterações
@@ -198,7 +192,6 @@ As operações respeitam as políticas RLS configuradas na Task 2:
    - [ ] Validar persistência no banco
 
 5. **Quick Action:**
-
    - [ ] Usar botão "Alterar Status" na tabela
    - [ ] Verificar modal de alteração rápida
    - [ ] Confirmar atualização
